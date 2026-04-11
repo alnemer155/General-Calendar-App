@@ -1,0 +1,15 @@
+{
+  "name": "التقويم العام",
+  "short_name": "التقويم",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0B0B",
+  "theme_color": "#0B0B0B",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/xS4bryK3/phonto.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
