@@ -23,9 +23,6 @@ export interface AcademicEvent {
 export interface AppSettings {
   cityId: string;
   calculationMethod: string;
-  madhab: 'shafi' | 'hanafi';
-  school: 'sunni' | 'shia';
-  shiaSect?: 'jafari' | 'ismaili' | 'zaydi';
   salaryCountry: 'SA' | 'AE' | 'KW' | 'QA' | 'BH' | 'OM';
   calendarView?: 'compact' | 'stacked' | 'details';
   primaryDate?: 'hijri' | 'gregorian';
