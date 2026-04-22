@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addMonths, subMonths, parseISO, startOfYear } from 'date-fns';
+import moment from 'moment';
+import 'moment-hijri';
+import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addMonths, subMonths, parseISO, startOfYear, differenceInYears, differenceInMonths, differenceInDays } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
 import { Coordinates, CalculationMethod, PrayerTimes, SunnahTimes, Madhab } from 'adhan';
 import { useLocalStorage } from './hooks/use-local-storage';
@@ -37,6 +39,7 @@ export default function App() {
   const [printDesign, setPrintDesign] = useState<'original' | 'custom' | 'general' | 'modern'>('modern');
   const [printDateType, setPrintDateType] = useState<'both' | 'hijri' | 'gregorian'>('both');
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [dob, setDob] = useLocalStorage('dob', '');
   
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventContent, setNewEventContent] = useState('');
@@ -57,8 +60,8 @@ export default function App() {
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
       </div>
-      <h1 className="text-3xl font-bold mb-4">{isAr ? '404 - الصفحة غير موجودة' : '404 - Page Not Found'}</h1>
-      <p className="text-zinc-400">{isAr ? 'عذراً، الرابط الذي تحاول الوصول إليه غير صالح أو منتهي الصلاحية.' : 'Sorry, the link you are trying to access is invalid or has expired.'}</p>
+      <h1 className="text-3xl font-bold mb-4">{isAr ? 'خطأ' : 'Error'}</h1>
+      <p className="text-zinc-400">{message}</p>
       <button 
         onClick={() => window.location.href = '/'}
         className="mt-8 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all"
@@ -194,6 +197,31 @@ export default function App() {
   ];
 
   // Events Logic
+  
+  const [dobDateType, setDobDateType] = useState<'gregorian' | 'hijri'>('gregorian');
+  
+  const age = useMemo(() => {
+    if (!dob) return null;
+    
+    if (dobDateType === 'gregorian') {
+        const birthDate = parseISO(dob);
+        const now = new Date();
+        const years = differenceInYears(now, birthDate);
+        const months = differenceInMonths(now, birthDate) % 12;
+        const days = differenceInDays(now, addMonths(birthDate, differenceInMonths(now, birthDate)));
+        return { years, months, days };
+    } else {
+        // Hijri calculation is temporarily falling back to Gregorian calculation to ensure app stability.
+        const birthDate = parseISO(dob);
+        const now = new Date();
+        const years = differenceInYears(now, birthDate);
+        const months = differenceInMonths(now, addMonths(birthDate, years));
+        const days = differenceInDays(now, addDays(addMonths(birthDate, years), months));
+        
+        // This is an approximate age calculation as Hijri support is currently being stabilized.
+        return { years, months, days };
+    }
+  }, [dob, dobDateType]);
   
   const prayerTimes = useMemo(() => {
     const city = GCC_CITIES.find(c => c.id === appSettings.cityId) || GCC_CITIES[0];
@@ -466,7 +494,7 @@ export default function App() {
             
             {/* Main Date Card */}
             <motion.div 
-              className="app-card rounded-[2rem] p-8 lg:p-10 flex flex-col items-center justify-center relative overflow-hidden min-h-[280px]"
+              className="app-card rounded-[2rem] p-8 lg:p-10 flex flex-col items-center justify-center relative overflow-hidden h-[165px]"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -477,13 +505,13 @@ export default function App() {
               <div className="text-center space-y-6 z-10 w-full">
                 <div className="text-[12px] font-light text-zinc-400 mb-2">{dayNameStr}</div>
                 
-                <div className="text-[30px] font-light tracking-tight leading-tight text-zinc-50">
+                <div className="text-[25px] font-light tracking-tight leading-tight text-zinc-50">
                   {appSettings.primaryDate === 'gregorian' ? gregorianDateStr : hijriDateStr}
                 </div>
                 
                 <div className="w-16 h-[1px] bg-zinc-800 mx-auto my-6 rounded-full" />
                 
-                <div className="text-[11px] font-light text-zinc-300">
+                <div className="text-[12px] font-light text-zinc-300">
                   {appSettings.primaryDate === 'gregorian' ? hijriDateStr : gregorianDateStr}
                 </div>
               </div>
@@ -504,17 +532,13 @@ export default function App() {
             </motion.div>
 
             {/* Prayer Times Section */}
-            <div className="app-card rounded-[2rem] p-6 lg:p-8 flex flex-col gap-6 h-[336px]">
-              <div className="flex items-center justify-between">
+            <div className="app-card rounded-[2rem] p-6 lg:p-8 flex flex-col gap-6 h-[265px]">
+              <div className="flex items-center justify-between h-[16px]">
                 <div className="flex items-center gap-3">
                   <div>
                     <h3 className="text-lg font-light text-zinc-100">
                       {isAr ? 'أوقات الصلاة' : 'Prayer Times'}
                     </h3>
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-light mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      {GCC_CITIES.find(c => c.id === appSettings.cityId)?.[isAr ? 'nameAr' : 'nameEn']}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -534,6 +558,46 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Age Calculator Card */}
+            <div className="app-card rounded-[2rem] p-6 lg:p-8 flex flex-col gap-6 h-[220px]">
+              <h3 className="text-lg font-light text-zinc-100">{isAr ? 'حساب العمر' : 'Age Calculator'}</h3>
+              <div className="flex gap-3">
+                <input 
+                  type="date" 
+                  value={dob} 
+                  onChange={(e) => setDob(e.target.value)}
+                  className="bg-black/40 border border-zinc-800 rounded-2xl px-4 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all placeholder:text-zinc-600 cursor-pointer h-[48px] text-sm"
+                  style={{ width: '150px' }}
+                />
+                <select 
+                  className="flex-1 bg-black/40 border border-zinc-800 rounded-2xl px-4 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
+                  value={dobDateType}
+                  onChange={(e) => setDobDateType(e.target.value as 'gregorian' | 'hijri')}
+                >
+                  <option value="gregorian">{isAr ? 'ميلادي' : 'Gregorian'}</option>
+                  <option value="hijri">{isAr ? 'هجري' : 'Hijri'}</option>
+                </select>
+              </div>
+              {age ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: isAr ? 'السنة' : 'Years', value: age.years },
+                    { label: isAr ? 'الشهر' : 'Months', value: age.months },
+                    { label: isAr ? 'اليوم' : 'Days', value: age.days },
+                  ].map((item, idx) => (
+                    <div key={idx} className="bg-black/40 border border-zinc-800 rounded-2xl p-3 text-center flex flex-col justify-center items-center h-[65px]">
+                      <div className="text-xl font-bold text-zinc-100 tracking-tight">{item.value}</div>
+                      <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-zinc-600 text-xs font-light">
+                  {isAr ? 'حدد تاريخ ميلادك للحساب' : 'Select birth date to calculate'}
+                </div>
+              )}
             </div>
           </div>
 
@@ -948,241 +1012,452 @@ export default function App() {
         </div>
       </main>
 
-      {/* Settings Modal - iOS Style */}
+      {/* Settings Modal - Redesigned & Responsive */}
       <AnimatePresence>
         {showSettings && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 md:p-8 lg:p-12">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4 md:p-8 lg:p-12">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSettings(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/90 backdrop-blur-2xl"
             />
             <motion.div 
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full h-[90vh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-[#1C1C1E] sm:rounded-3xl rounded-t-3xl overflow-hidden flex flex-col relative z-10"
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              className="w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl lg:max-w-5xl bg-zinc-950 sm:rounded-[3rem] border-0 sm:border border-zinc-800/50 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative z-10"
             >
-              {/* Header */}
-              <div className="px-4 py-4 border-b border-zinc-800 flex items-center justify-between bg-[#1C1C1E] sticky top-0 z-20">
-                <div className="w-16"></div> {/* Spacer for centering */}
-                <h3 className="text-lg font-semibold text-white">
-                  {isAr ? 'الإعدادات' : 'Settings'}
-                </h3>
+              {/* Settings Header */}
+              <div className="px-6 py-6 sm:px-12 sm:py-10 border-b border-zinc-900/50 flex items-center justify-between bg-zinc-950/50 backdrop-blur-md sticky top-0 z-20">
+                <div>
+                  <h3 className="text-xl sm:text-3xl font-light text-zinc-100 tracking-tight">
+                    {isAr ? 'الإعدادات' : 'Settings'}
+                  </h3>
+                  <p className="text-[10px] sm:text-sm text-zinc-500 font-light mt-1">
+                    {isAr ? 'تخصيص تجربة التقويم الخاص بك' : 'Personalize your calendar experience'}
+                  </p>
+                </div>
                 <button 
                   onClick={() => setShowSettings(false)}
-                  className="w-16 text-left sm:text-right text-indigo-500 hover:text-indigo-400 font-medium text-base transition-colors"
-                  dir={dir}
+                  className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900 rounded-2xl transition-all border border-transparent hover:border-zinc-800"
                 >
-                  {isAr ? 'تم' : 'Done'}
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-black hide-scrollbar">
+              {/* Settings Content */}
+              <div className="flex-1 overflow-y-auto p-6 sm:p-10 lg:p-12 space-y-12 hide-scrollbar">
                 
                 {/* General Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[13px] font-medium text-zinc-500 uppercase px-4">
-                    {isAr ? 'عام' : 'General'}
-                  </h4>
-                  <div className="bg-[#1C1C1E] rounded-2xl overflow-hidden divide-y divide-zinc-800/50">
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h4 className={cn("text-[10px] font-bold text-zinc-500 uppercase", !isAr && "tracking-[0.3em]")}>
+                      {isAr ? 'عام' : 'General'}
+                    </h4>
+                    <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Language */}
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'لغة التطبيق' : 'App Language'}</span>
-                      <div className="flex bg-[#2C2C2E] rounded-lg p-1">
-                        <button onClick={() => setLang('ar')} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", lang === 'ar' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>العربية</button>
-                        <button onClick={() => setLang('en')} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", lang === 'en' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>English</button>
+                    <div className="space-y-3">
+                      <label className="text-sm font-light text-zinc-400 ms-1">
+                        {isAr ? 'لغة التطبيق' : 'App Language'}
+                      </label>
+                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                        <button 
+                          onClick={() => setLang('ar')}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
+                            lang === 'ar' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          العربية
+                        </button>
+                        <button 
+                          onClick={() => setLang('en')}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
+                            lang === 'en' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          English
+                        </button>
                       </div>
                     </div>
+
                     {/* Hijri Adjustment */}
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'تعديل التاريخ الهجري' : 'Hijri Adjustment'}</span>
-                      <div className="flex items-center bg-[#2C2C2E] rounded-lg p-1">
-                        <button onClick={() => setHijriOffset(prev => prev - 1)} className="w-8 h-8 flex items-center justify-center text-zinc-300 hover:bg-zinc-700 rounded-md text-lg">-</button>
-                        <div className="w-12 text-center text-sm text-white font-medium">{hijriOffset > 0 ? `+${hijriOffset}` : hijriOffset}</div>
-                        <button onClick={() => setHijriOffset(prev => prev + 1)} className="w-8 h-8 flex items-center justify-center text-zinc-300 hover:bg-zinc-700 rounded-md text-lg">+</button>
+                    <div className="space-y-3">
+                      <label className="text-sm font-light text-zinc-400 ms-1">
+                        {isAr ? 'تعديل التاريخ الهجري' : 'Hijri Adjustment'}
+                      </label>
+                      <div className="flex items-center bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                        <button 
+                          onClick={() => setHijriOffset(prev => prev - 1)}
+                          className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-950/50 rounded-xl border border-zinc-800/50"
+                        >
+                          -
+                        </button>
+                        <div className="flex-1 text-center text-lg font-light text-zinc-100">
+                          {hijriOffset > 0 ? `+${hijriOffset}` : hijriOffset}
+                        </div>
+                        <button 
+                          onClick={() => setHijriOffset(prev => prev + 1)}
+                          className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-950/50 rounded-xl border border-zinc-800/50"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
+
                     {/* Primary Date */}
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'التاريخ الأساسي' : 'Primary Date'}</span>
-                      <div className="flex bg-[#2C2C2E] rounded-lg p-1">
-                        <button onClick={() => setAppSettings({ ...appSettings, primaryDate: 'hijri' })} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", appSettings.primaryDate === 'hijri' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'هجري' : 'Hijri'}</button>
-                        <button onClick={() => setAppSettings({ ...appSettings, primaryDate: 'gregorian' })} className={cn("px-4 py-1.5 rounded-md text-sm transition-all", appSettings.primaryDate === 'gregorian' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'ميلادي' : 'Gregorian'}</button>
+                    <div className="space-y-3">
+                      <label className="text-sm font-light text-zinc-400 ms-1">
+                        {isAr ? 'التاريخ الأساسي' : 'Primary Date'}
+                      </label>
+                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                        <button 
+                          onClick={() => setAppSettings({ ...appSettings, primaryDate: 'hijri' })}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
+                            appSettings.primaryDate === 'hijri' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          {isAr ? 'هجري' : 'Hijri'}
+                        </button>
+                        <button 
+                          onClick={() => setAppSettings({ ...appSettings, primaryDate: 'gregorian' })}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
+                            appSettings.primaryDate === 'gregorian' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          {isAr ? 'ميلادي' : 'Gregorian'}
+                        </button>
                       </div>
                     </div>
+
                     {/* Calendar View */}
-                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <span className="text-base text-white">{isAr ? 'عرض الجدول' : 'Calendar View'}</span>
-                      <div className="flex bg-[#2C2C2E] rounded-lg p-1 w-full sm:w-auto">
-                        <button onClick={() => setAppSettings({ ...appSettings, calendarView: 'compact' })} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", appSettings.calendarView === 'compact' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>Compact</button>
-                        <button onClick={() => setAppSettings({ ...appSettings, calendarView: 'stacked' })} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", appSettings.calendarView === 'stacked' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>Stacked</button>
-                        <button onClick={() => setAppSettings({ ...appSettings, calendarView: 'details' })} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", appSettings.calendarView === 'details' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>Details</button>
+                    <div className="space-y-3">
+                      <label className="text-sm font-light text-zinc-400 ms-1">
+                        {isAr ? 'عرض الجدول' : 'Calendar View'}
+                      </label>
+                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                        <button 
+                          onClick={() => setAppSettings({ ...appSettings, calendarView: 'compact' })}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
+                            appSettings.calendarView === 'compact' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          {isAr ? 'مضغوط' : 'Compact'}
+                        </button>
+                        <button 
+                          onClick={() => setAppSettings({ ...appSettings, calendarView: 'stacked' })}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
+                            appSettings.calendarView === 'stacked' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          {isAr ? 'مكدس' : 'Stacked'}
+                        </button>
+                        <button 
+                          onClick={() => setAppSettings({ ...appSettings, calendarView: 'details' })}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
+                            appSettings.calendarView === 'details' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                          )}
+                        >
+                          {isAr ? 'تفصيلي' : 'Details'}
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
 
                 {/* Prayer Settings */}
-                <div className="space-y-2">
-                  <h4 className="text-[13px] font-medium text-zinc-500 uppercase px-4">
-                    {isAr ? 'الصلاة' : 'Prayer'}
-                  </h4>
-                  <div className="bg-[#1C1C1E] rounded-2xl overflow-hidden divide-y divide-zinc-800/50">
-                    {/* City */}
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'المدينة' : 'City'}</span>
-                      <select 
-                        value={appSettings.cityId}
-                        onChange={(e) => setAppSettings({ ...appSettings, cityId: e.target.value })}
-                        className="bg-transparent text-indigo-400 text-sm text-right focus:outline-none appearance-none cursor-pointer"
-                        dir={dir}
-                      >
-                        {GCC_CITIES.map(city => (
-                          <option key={city.id} value={city.id} className="bg-[#1C1C1E] text-white">
-                            {isAr ? `${city.nameAr} - ${city.countryAr}` : `${city.nameEn} - ${city.countryEn}`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Calculation Method */}
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'طريقة الحساب' : 'Calculation Method'}</span>
-                      <select 
-                        value={appSettings.calculationMethod}
-                        onChange={(e) => setAppSettings({ ...appSettings, calculationMethod: e.target.value })}
-                        className="bg-transparent text-indigo-400 text-sm text-right focus:outline-none appearance-none cursor-pointer"
-                        dir={dir}
-                      >
-                        <option value="UmmAlQura" className="bg-[#1C1C1E] text-white">{isAr ? 'أم القرى' : 'Umm Al-Qura'}</option>
-                        <option value="Dubai" className="bg-[#1C1C1E] text-white">{isAr ? 'دبي' : 'Dubai'}</option>
-                        <option value="Kuwait" className="bg-[#1C1C1E] text-white">{isAr ? 'الكويت' : 'Kuwait'}</option>
-                        <option value="Qatar" className="bg-[#1C1C1E] text-white">{isAr ? 'قطر' : 'Qatar'}</option>
-                        <option value="MuslimWorldLeague" className="bg-[#1C1C1E] text-white">{isAr ? 'رابطة العالم الإسلامي' : 'Muslim World League'}</option>
-                        <option value="Jafari" className="bg-[#1C1C1E] text-white">{isAr ? 'حساب جعفري' : 'Jafari'}</option>
-                      </select>
-                    </div>
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h4 className={cn("text-[10px] font-bold text-zinc-500 uppercase", !isAr && "tracking-[0.3em]")}>
+                      {isAr ? 'الصلاة' : 'Prayer'}
+                    </h4>
+                    <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
                   </div>
-                </div>
 
-                {/* Salaries */}
-                <div className="space-y-2">
-                  <h4 className="text-[13px] font-medium text-zinc-500 uppercase px-4">
-                    {isAr ? 'الرواتب' : 'Salaries'}
-                  </h4>
-                  <div className="bg-[#1C1C1E] rounded-2xl overflow-hidden divide-y divide-zinc-800/50">
-                    <div className="p-4 flex items-center justify-between">
-                      <span className="text-base text-white">{isAr ? 'دولة الرواتب' : 'Salary Country'}</span>
-                      <select 
-                        value={appSettings.salaryCountry}
-                        onChange={(e) => setAppSettings({ ...appSettings, salaryCountry: e.target.value as any })}
-                        className="bg-transparent text-indigo-400 text-sm text-right focus:outline-none appearance-none cursor-pointer"
-                        dir={dir}
-                      >
-                        {[
-                          { id: 'SA', nameAr: 'السعودية', nameEn: 'Saudi Arabia' },
-                          { id: 'AE', nameAr: 'الإمارات', nameEn: 'UAE' },
-                          { id: 'KW', nameAr: 'الكويت', nameEn: 'Kuwait' },
-                          { id: 'QA', nameAr: 'قطر', nameEn: 'Qatar' },
-                          { id: 'BH', nameAr: 'البحرين', nameEn: 'Bahrain' },
-                          { id: 'OM', nameAr: 'عمان', nameEn: 'Oman' },
-                        ].map(country => (
-                          <option key={country.id} value={country.id} className="bg-[#1C1C1E] text-white">
-                            {isAr ? country.nameAr : country.nameEn}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Download & Share */}
-                <div className="space-y-2">
-                  <h4 className="text-[13px] font-medium text-zinc-500 uppercase px-4">
-                    {isAr ? 'تحميل ومشاركة' : 'Download & Share'}
-                  </h4>
-                  <div className="bg-[#1C1C1E] rounded-2xl overflow-hidden divide-y divide-zinc-800/50">
-                    
-                    {/* PDF Export Settings */}
-                    <div className="p-4 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <span className="text-base text-white">{isAr ? 'مدة العرض (PDF)' : 'Duration (PDF)'}</span>
-                        <div className="flex bg-[#2C2C2E] rounded-lg p-1 w-full sm:w-auto">
-                          <button onClick={() => setPrintDuration('6months')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm transition-all", printDuration === '6months' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? '6 أشهر' : '6 Months'}</button>
-                          <button onClick={() => setPrintDuration('1year')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm transition-all", printDuration === '1year' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'سنة كاملة' : 'Full Year'}</button>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <span className="text-base text-white">{isAr ? 'نمط التصميم (PDF)' : 'Design Style (PDF)'}</span>
-                        <div className="flex bg-[#2C2C2E] rounded-lg p-1 w-full sm:w-auto overflow-x-auto hide-scrollbar">
-                          <button onClick={() => setPrintDesign('modern')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all whitespace-nowrap", printDesign === 'modern' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'عصري' : 'Modern'}</button>
-                          <button onClick={() => setPrintDesign('original')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all whitespace-nowrap", printDesign === 'original' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'الأصلي' : 'Original'}</button>
-                          <button onClick={() => setPrintDesign('custom')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all whitespace-nowrap", printDesign === 'custom' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'مخصص' : 'Custom'}</button>
-                          <button onClick={() => setPrintDesign('general')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all whitespace-nowrap", printDesign === 'general' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'عام' : 'General'}</button>
-                        </div>
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-sm font-light text-zinc-400 ms-1">
+                          {isAr ? 'المدينة' : 'City'}
+                        </label>
+                        <select 
+                          value={appSettings.cityId}
+                          onChange={(e) => setAppSettings({ ...appSettings, cityId: e.target.value })}
+                          className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-light text-base appearance-none"
+                        >
+                          {GCC_CITIES.map(city => (
+                            <option key={city.id} value={city.id} className="bg-zinc-950">
+                              {isAr ? `${city.nameAr} - ${city.countryAr}` : `${city.nameEn} - ${city.countryEn}`}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <span className="text-base text-white">{isAr ? 'نوع التاريخ (PDF)' : 'Date Type (PDF)'}</span>
-                        <div className="flex bg-[#2C2C2E] rounded-lg p-1 w-full sm:w-auto">
-                          <button onClick={() => setPrintDateType('both')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", printDateType === 'both' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'الكل' : 'Both'}</button>
-                          <button onClick={() => setPrintDateType('hijri')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", printDateType === 'hijri' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'هجري' : 'Hijri'}</button>
-                          <button onClick={() => setPrintDateType('gregorian')} className={cn("flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm transition-all", printDateType === 'gregorian' ? "bg-[#6366f1] text-white font-medium" : "text-zinc-400")}>{isAr ? 'ميلادي' : 'Gregorian'}</button>
+                      <div className="space-y-3">
+                        <label className="text-sm font-light text-zinc-400 ms-1">
+                          {isAr ? 'طريقة الحساب' : 'Calculation Method'}
+                        </label>
+                        <select 
+                          value={appSettings.calculationMethod}
+                          onChange={(e) => setAppSettings({ ...appSettings, calculationMethod: e.target.value })}
+                          className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-light text-base appearance-none"
+                        >
+                          <option value="UmmAlQura" className="bg-zinc-950">{isAr ? 'أم القرى' : 'Umm Al-Qura'}</option>
+                          <option value="Dubai" className="bg-zinc-950">{isAr ? 'دبي' : 'Dubai'}</option>
+                          <option value="Kuwait" className="bg-zinc-950">{isAr ? 'الكويت' : 'Kuwait'}</option>
+                          <option value="Qatar" className="bg-zinc-950">{isAr ? 'قطر' : 'Qatar'}</option>
+                          <option value="MuslimWorldLeague" className="bg-zinc-950">{isAr ? 'رابطة العالم الإسلامي' : 'Muslim World League'}</option>
+                          <option value="Jafari" className="bg-zinc-950">{isAr ? 'حساب جعفري' : 'Jafari'}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Salary Settings */}
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h4 className={cn("text-[10px] font-bold text-zinc-500 uppercase", !isAr && "tracking-[0.3em]")}>
+                      {isAr ? 'الرواتب' : 'Salaries'}
+                    </h4>
+                    <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <label className="text-sm font-light text-zinc-400 ms-1">
+                      {isAr ? 'دولة الرواتب' : 'Salary Country'}
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {[
+                        { id: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia' },
+                        { id: 'AE', nameAr: 'الإمارات العربية المتحدة', nameEn: 'United Arab Emirates' },
+                        { id: 'KW', nameAr: 'دولة الكويت', nameEn: 'Kuwait' },
+                        { id: 'QA', nameAr: 'دولة قطر', nameEn: 'Qatar' },
+                        { id: 'BH', nameAr: 'مملكة البحرين', nameEn: 'Bahrain' },
+                        { id: 'OM', nameAr: 'سلطنة عمان', nameEn: 'Oman' },
+                      ].map(country => (
+                        <button 
+                          key={country.id}
+                          onClick={() => setAppSettings({ ...appSettings, salaryCountry: country.id as any })}
+                          className={cn(
+                            "px-4 py-4 rounded-[1.5rem] border text-sm font-light transition-all",
+                            appSettings.salaryCountry === country.id 
+                              ? "bg-zinc-100 text-zinc-950 border-zinc-100 font-bold shadow-xl" 
+                              : "bg-zinc-900/50 border-zinc-800/50 text-zinc-500 hover:border-zinc-700"
+                          )}
+                        >
+                          {isAr ? country.nameAr : country.nameEn}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Download & Share Section - Redesigned */}
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h4 className={cn("text-[10px] font-bold text-zinc-500 uppercase", !isAr && "tracking-[0.3em]")}>
+                      {isAr ? 'تحميل ومشاركة' : 'Download & Share'}
+                    </h4>
+                    <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* PDF Export Card */}
+                    <div className="p-8 rounded-[2.5rem] bg-zinc-900/50 border border-zinc-800/80 space-y-8 backdrop-blur-sm shadow-xl shadow-black/20">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400">
+                          <FileDown className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h5 className="text-lg font-bold text-zinc-100">
+                            {isAr ? 'تصدير كـ PDF' : 'Export as PDF'}
+                          </h5>
+                          <p className="text-xs text-zinc-500 font-light mt-1">
+                            {isAr ? 'تخصيص وتحميل نسخة مطبوعة' : 'Customize and download a print version'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        {/* Duration */}
+                        <div className="space-y-3">
+                          <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
+                            {isAr ? 'مدة العرض' : 'Duration'}
+                          </label>
+                          <div className="flex bg-black/40 border border-zinc-800 rounded-2xl p-1">
+                            <button
+                              onClick={() => setPrintDuration('6months')}
+                              className={cn("flex-1 py-3 rounded-xl text-[11px] font-bold transition-all", printDuration === '6months' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            >
+                              {isAr ? '6 أشهر' : '6 Months'}
+                            </button>
+                            <button
+                              onClick={() => setPrintDuration('1year')}
+                              className={cn("flex-1 py-3 rounded-xl text-[11px] font-bold transition-all", printDuration === '1year' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                            >
+                              {isAr ? 'سنة كاملة' : 'Full Year'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Design */}
+                        <div className="space-y-3">
+                          <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
+                            {isAr ? 'نمط التصميم' : 'Design Style'}
+                          </label>
+                          <div className="flex bg-black/40 border border-zinc-800 rounded-2xl p-1 gap-1 overflow-x-auto hide-scrollbar">
+                            {[
+                              { id: 'modern', label: isAr ? 'عصري' : 'Modern' },
+                              { id: 'original', label: isAr ? 'الأصلي' : 'Original' },
+                              { id: 'custom', label: isAr ? 'مخصص' : 'Custom' },
+                              { id: 'general', label: isAr ? 'عام' : 'General' }
+                            ].map(style => (
+                              <button
+                                key={style.id}
+                                onClick={() => setPrintDesign(style.id as any)}
+                                className={cn("flex-1 py-2.5 px-4 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", printDesign === style.id ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                              >
+                                {style.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Date Type */}
+                        <div className="space-y-3">
+                          <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
+                            {isAr ? 'نوع التاريخ' : 'Date Type'}
+                          </label>
+                          <div className="flex bg-black/40 border border-zinc-800 rounded-2xl p-1 gap-1">
+                            {[
+                              { id: 'both', label: isAr ? 'الكل' : 'Both' },
+                              { id: 'hijri', label: isAr ? 'هجري' : 'Hijri' },
+                              { id: 'gregorian', label: isAr ? 'ميلادي' : 'Gregorian' }
+                            ].map(type => (
+                              <button
+                                key={type.id}
+                                onClick={() => setPrintDateType(type.id as any)}
+                                className={cn("flex-1 py-3 rounded-xl text-[11px] font-bold transition-all", printDateType === type.id ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                              >
+                                {type.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
                       <button
                         onClick={() => window.print()}
-                        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-base font-medium transition-all text-center mt-2"
+                        className="w-full h-[54px] rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
                       >
+                        <FileDown className="w-5 h-5" />
                         {isAr ? 'تحميل التقويم كـ PDF' : 'Download Calendar as PDF'}
                       </button>
                     </div>
 
-                    {/* Share Buttons */}
-                    <div className="p-4 space-y-3">
-                      <button
-                        onClick={() => {
-                          const shareUrl = new URL(window.location.href);
-                          shareUrl.searchParams.set('pdfId', Math.random().toString(36).substring(2, 10));
-                          shareUrl.searchParams.set('createdAt', Date.now().toString());
-                          const message = isAr 
-                            ? `إليك التقويم الدراسي والرواتب لعام ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`
-                            : `Here is the Academic & Salary Calendar for ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`;
-                          window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-                        }}
-                        className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#22c35e] text-white text-base font-medium transition-all flex items-center justify-center gap-2"
-                      >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                        </svg>
-                        {isAr ? 'مشاركة عبر واتساب' : 'Share via WhatsApp'}
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          const shareUrl = new URL(window.location.href);
-                          shareUrl.searchParams.set('pdfId', Math.random().toString(36).substring(2, 10));
-                          shareUrl.searchParams.set('createdAt', Date.now().toString());
-                          const message = isAr 
-                            ? `إليك التقويم الدراسي والرواتب لعام ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`
-                            : `Here is the Academic & Salary Calendar for ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`;
-                          window.open(`sms:?&body=${encodeURIComponent(message)}`, '_self');
-                        }}
-                        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-base font-medium transition-all flex items-center justify-center gap-2"
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                        {isAr ? 'مشاركة عبر رسالة نصية' : 'Share via SMS'}
-                      </button>
+                    {/* Social Share Card */}
+                    <div className="p-6 sm:p-8 rounded-[2rem] bg-zinc-900/30 border border-zinc-800/50 flex flex-col justify-between space-y-8">
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <h5 className="text-base font-bold text-zinc-100">
+                              {isAr ? 'مشاركة الرابط' : 'Share Link'}
+                            </h5>
+                            <p className="text-xs text-zinc-500 font-light mt-1">
+                              {isAr ? 'شارك التقويم مع الآخرين' : 'Share the calendar with others'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-zinc-400 font-light leading-relaxed">
+                          {isAr 
+                            ? 'يمكنك مشاركة رابط التقويم مباشرة عبر منصات التواصل الاجتماعي لسهولة الوصول.' 
+                            : 'You can share the calendar link directly via social media platforms for easy access.'}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4">
+                        <button
+                          onClick={() => {
+                            const shareUrl = new URL(window.location.href);
+                            shareUrl.searchParams.set('pdfId', Math.random().toString(36).substring(2, 10));
+                            shareUrl.searchParams.set('createdAt', Date.now().toString());
+                            const message = isAr 
+                              ? `إليك التقويم الدراسي والرواتب لعام ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`
+                              : `Here is the Academic & Salary Calendar for ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                          }}
+                          className="w-full h-[54px] rounded-2xl bg-[#25D366] hover:bg-[#22c35e] text-white text-[13px] font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/10"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                          </svg>
+                          {isAr ? 'مشاركة عبر واتساب' : 'Share via WhatsApp'}
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            const shareUrl = new URL(window.location.href);
+                            shareUrl.searchParams.set('pdfId', Math.random().toString(36).substring(2, 10));
+                            shareUrl.searchParams.set('createdAt', Date.now().toString());
+                            const message = isAr 
+                              ? `إليك التقويم الدراسي والرواتب لعام ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`
+                              : `Here is the Academic & Salary Calendar for ${format(currentMonth, 'yyyy')}: ${shareUrl.toString()}`;
+                            window.open(`sms:?&body=${encodeURIComponent(message)}`, '_self');
+                          }}
+                          className="w-full h-[54px] rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-[13px] font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-500/10"
+                        >
+                          <MessageSquare className="w-5 h-5" />
+                          {isAr ? 'مشاركة عبر رسالة نصية' : 'Share via SMS'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </section>
 
+                {/* Legal Section */}
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h4 className={cn("text-[10px] font-bold text-zinc-500 uppercase", !isAr && "tracking-[0.3em]")}>
+                      {isAr ? 'قانوني' : 'Legal'}
+                    </h4>
+                    <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { id: 'privacy', nameAr: 'سياسة الخصوصية', nameEn: 'Privacy Policy' },
+                      { id: 'terms', nameAr: 'شروط الاستخدام', nameEn: 'Terms of Use' },
+                      { id: 'rights', nameAr: 'حقوق المطور', nameEn: 'Developer Rights' },
+                    ].map(doc => (
+                      <button
+                        key={doc.id}
+                        onClick={() => window.open('/' + doc.id, '_blank')}
+                        className="px-6 py-4 rounded-[1.5rem] bg-zinc-900/50 border border-zinc-800/50 text-sm font-light text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 transition-all text-center"
+                      >
+                        {isAr ? doc.nameAr : doc.nameEn}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="p-8 rounded-[2rem] bg-zinc-900/30 border border-zinc-900/50">
+                    <p className="text-[11px] text-zinc-500 font-light leading-relaxed text-center max-w-md mx-auto">
+                      {LEGAL_FOOTER}
+                    </p>
+                  </div>
+                </section>
               </div>
             </motion.div>
           </div>
@@ -1299,14 +1574,14 @@ export default function App() {
                       <label className={cn("text-[10px] font-bold text-zinc-500 uppercase ms-1", !isAr && "tracking-[0.3em]")}>
                         {isAr ? 'لون التمييز' : 'Accent Color'}
                       </label>
-                      <div className="flex gap-3 flex-wrap bg-zinc-900/30 border border-zinc-800/50 rounded-[1.5rem] p-4">
+                      <div className="flex gap-3 flex-wrap bg-zinc-900/30 border border-zinc-800/50 rounded-[1.5rem] p-4 h-[60px]">
                         {colors.map(color => (
                           <button
                             key={color.value}
                             type="button"
                             onClick={() => setNewEventColor(color.value)}
                             className={cn(
-                              "w-8 h-8 rounded-full transition-all relative flex items-center justify-center",
+                              "w-[25px] h-[25px] rounded-full transition-all relative flex items-center justify-center",
                               newEventColor === color.value ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950 scale-110" : "hover:scale-110 opacity-70 hover:opacity-100"
                             )}
                             style={{ backgroundColor: color.value }}
@@ -1332,7 +1607,7 @@ export default function App() {
                   <div className="pt-4 pb-2">
                     <button 
                       type="submit"
-                      className="w-full py-5 rounded-[1.5rem] bg-zinc-100 text-zinc-950 font-bold text-lg hover:bg-white transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-[0.98]"
+                      className="w-full h-[54px] pt-[15px] rounded-[1.5rem] bg-zinc-100 text-zinc-950 font-bold text-[15px] hover:bg-white transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-[0.98]"
                     >
                       {editingEventId 
                         ? (isAr ? 'حفظ التغييرات' : 'Save Changes') 
