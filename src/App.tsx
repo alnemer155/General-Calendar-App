@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import moment from 'moment';
-import 'moment-hijri';
+import moment from 'moment-hijri';
 import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek, addMonths, subMonths, parseISO, startOfYear, differenceInYears, differenceInMonths, differenceInDays } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
 import { Coordinates, CalculationMethod, PrayerTimes, SunnahTimes, Madhab } from 'adhan';
@@ -38,8 +37,9 @@ export default function App() {
   const [printDuration, setPrintDuration] = useState<'6months' | '1year'>('6months');
   const [printDesign, setPrintDesign] = useState<'original' | 'custom' | 'general' | 'modern'>('modern');
   const [printDateType, setPrintDateType] = useState<'both' | 'hijri' | 'gregorian'>('both');
+  const [printOrientation, setPrintOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [printPaperSize, setPrintPaperSize] = useState<'A4' | 'A3' | 'Letter' | 'Legal'>('A4');
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [dob, setDob] = useLocalStorage('dob', '');
   
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventContent, setNewEventContent] = useState('');
@@ -198,30 +198,29 @@ export default function App() {
 
   // Events Logic
   
-  const [dobDateType, setDobDateType] = useState<'gregorian' | 'hijri'>('gregorian');
+  const [convMode, setConvMode] = useState<'g2h' | 'h2g'>('g2h');
+  const [convGregDate, setConvGregDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [convHijriD, setConvHijriD] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric' }).format(new Date())));
+  const [convHijriM, setConvHijriM] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { month: 'numeric' }).format(new Date())));
+  const [convHijriY, setConvHijriY] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { year: 'numeric' }).format(new Date()).split(' ')[0]));
   
-  const age = useMemo(() => {
-    if (!dob) return null;
-    
-    if (dobDateType === 'gregorian') {
-        const birthDate = parseISO(dob);
-        const now = new Date();
-        const years = differenceInYears(now, birthDate);
-        const months = differenceInMonths(now, birthDate) % 12;
-        const days = differenceInDays(now, addMonths(birthDate, differenceInMonths(now, birthDate)));
-        return { years, months, days };
-    } else {
-        // Hijri calculation is temporarily falling back to Gregorian calculation to ensure app stability.
-        const birthDate = parseISO(dob);
-        const now = new Date();
-        const years = differenceInYears(now, birthDate);
-        const months = differenceInMonths(now, addMonths(birthDate, years));
-        const days = differenceInDays(now, addDays(addMonths(birthDate, years), months));
-        
-        // This is an approximate age calculation as Hijri support is currently being stabilized.
-        return { years, months, days };
+  const convertedDateStr = useMemo(() => {
+    if (convMode === 'g2h' && convGregDate) {
+      const d = new Date(convGregDate);
+      if (!isNaN(d.getTime())) {
+        const formatter = new Intl.DateTimeFormat(isAr ? 'ar-SA-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        });
+        return formatter.format(d);
+      }
+    } else if (convMode === 'h2g') {
+      const m = moment(`${convHijriY}/${convHijriM}/${convHijriD}`, 'iYYYY/iM/iD');
+      if (m.isValid()) {
+        return format(m.toDate(), 'd MMMM yyyy', { locale: isAr ? arSA : enUS });
+      }
     }
-  }, [dob, dobDateType]);
+    return null;
+  }, [convMode, convGregDate, convHijriD, convHijriM, convHijriY, isAr]);
   
   const prayerTimes = useMemo(() => {
     const city = GCC_CITIES.find(c => c.id === appSettings.cityId) || GCC_CITIES[0];
@@ -373,10 +372,16 @@ export default function App() {
 
   return (
     <div className={cn(
-      "min-h-screen w-full flex flex-col bg-black text-zinc-100 transition-colors duration-300",
+      "min-h-screen w-full flex flex-col bg-[#050505] text-zinc-100 transition-colors duration-300 relative selection:bg-indigo-500/30 selection:text-indigo-200",
       printDesign === 'original' ? "print:bg-black print:text-zinc-100" : "print:bg-white print:text-black"
     )}>
-      <div className="flex-1 flex flex-col print:hidden">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none print:hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50" />
+      </div>
+
+      <div className="flex-1 flex flex-col print:hidden relative z-10">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full px-4 sm:px-6 lg:px-8 py-4 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
@@ -386,27 +391,27 @@ export default function App() {
               setSelectedDate(new Date());
               setCurrentMonth(startOfMonth(new Date()));
             }}
-            className="flex items-center gap-2 sm:gap-3 bg-black/40 backdrop-blur-xl border border-zinc-800/50 px-3 sm:px-4 py-2 rounded-2xl shadow-2xl hover:bg-zinc-900/50 transition-all cursor-pointer"
+            className="flex items-center gap-2 sm:gap-3 bg-zinc-900/60 backdrop-blur-2xl border border-zinc-800/80 px-3 sm:px-4 py-2.5 rounded-[1.25rem] shadow-2xl hover:bg-zinc-800/60 transition-all cursor-pointer group"
             title={isAr ? 'العودة لليوم' : 'Return to Today'}
           >
-            <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400">
+            <div className="p-1.5 bg-indigo-500/10 rounded-[0.85rem] text-indigo-400 group-hover:scale-110 transition-transform">
               <CalendarDays className="w-5 h-5" />
             </div>
-            <h1 className="text-base sm:text-xl font-light tracking-tight text-zinc-100 hidden md:block">
+            <h1 className="text-base sm:text-xl font-medium tracking-tight text-zinc-100 hidden md:block px-1">
               {isAr ? 'التقويم العام' : 'General Calendar'}
             </h1>
           </button>
 
           {/* Live Clock - Floating Center */}
-          <div className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-zinc-800/50 px-5 py-2 rounded-2xl shadow-2xl">
-            <Clock className="w-4 h-4 text-indigo-400" />
-            <span className="text-sm font-light tracking-widest text-zinc-100 font-mono">
+          <div className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2.5 bg-zinc-900/60 backdrop-blur-2xl border border-zinc-800/80 px-5 py-2.5 rounded-[1.25rem] shadow-2xl hover:bg-zinc-900/80 transition-colors">
+            <Clock className="w-[18px] h-[18px] text-indigo-400" />
+            <span className="text-sm font-medium tracking-[0.2em] text-zinc-100 font-mono mt-0.5">
               {timeStr}
             </span>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-zinc-800/50 p-1.5 rounded-2xl shadow-2xl">
+          <div className="flex items-center gap-1.5 bg-zinc-900/60 backdrop-blur-2xl border border-zinc-800/80 p-1.5 rounded-[1.25rem] shadow-2xl">
             <button 
               onClick={() => {
                 setShowAcademic(!showAcademic);
@@ -414,13 +419,13 @@ export default function App() {
                 setShowAllEvents(false);
               }}
               className={cn(
-                "p-2 rounded-xl transition-all duration-300 group relative",
-                showAcademic ? "bg-indigo-500/20 text-indigo-300" : "hover:bg-zinc-800 text-zinc-400"
+                "p-2 rounded-[0.85rem] transition-all duration-300 group relative",
+                showAcademic ? "bg-indigo-500/20 text-indigo-300 shadow-sm" : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200"
               )}
               title={isAr ? 'التقويم الدراسي والمناسبات' : 'Academic & National Calendar'}
             >
-              <CalendarIcon className="w-5 h-5" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CalendarIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <div className={cn("absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300", showAcademic ? "bg-indigo-500/80 shadow-[0_0_8px_rgba(99,102,241,0.8)]" : "bg-indigo-500/0 ")} />
             </button>
 
             <button 
@@ -430,13 +435,13 @@ export default function App() {
                 setShowAllEvents(false);
               }}
               className={cn(
-                "p-2 rounded-xl transition-all duration-300 group relative",
-                showSalaries ? "bg-emerald-500/20 text-emerald-300" : "hover:bg-zinc-800 text-zinc-400"
+                "p-2 rounded-[0.85rem] transition-all duration-300 group relative",
+                showSalaries ? "bg-emerald-500/20 text-emerald-300 shadow-sm" : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200"
               )}
               title={isAr ? 'الرواتب' : 'Salaries'}
             >
-              <Banknote className="w-5 h-5" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Banknote className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <div className={cn("absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300", showSalaries ? "bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-emerald-500/0 ")} />
             </button>
 
             <button 
@@ -446,41 +451,39 @@ export default function App() {
                 setShowSalaries(false);
               }}
               className={cn(
-                "p-2 rounded-xl transition-all duration-300 group relative",
-                showAllEvents ? "bg-amber-500/20 text-amber-300" : "hover:bg-zinc-800 text-zinc-400"
+                "p-2 rounded-[0.85rem] transition-all duration-300 group relative",
+                showAllEvents ? "bg-amber-500/20 text-amber-300 shadow-sm" : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200"
               )}
               title={isAr ? 'الأحداث' : 'Events'}
             >
-              <ListTodo className="w-5 h-5" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ListTodo className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <div className={cn("absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transition-all duration-300", showAllEvents ? "bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.8)]" : "bg-amber-500/0 ")} />
             </button>
             
-            <div className="w-[1px] h-4 bg-zinc-800 mx-1" />
+            <div className="w-[1px] h-5 bg-zinc-800/80 mx-0.5" />
 
             <button 
               onClick={() => {
                 setNewEventDate(format(selectedDate, 'yyyy-MM-dd'));
                 setShowEventModal(true);
               }}
-              className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 transition-all duration-300 group relative"
+              className="p-2 rounded-[0.85rem] hover:bg-zinc-800/60 text-zinc-400 hover:text-indigo-300 transition-all duration-300 group relative"
               title={isAr ? 'إضافة حدث' : 'Add Event'}
             >
-              <Plus className="w-5 h-5" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
 
-            <div className="w-[1px] h-4 bg-zinc-800 mx-1" />
+            <div className="w-[1px] h-5 bg-zinc-800/80 mx-0.5" />
 
             <button 
               onClick={() => setShowSettings(!showSettings)}
               className={cn(
-                "p-2 rounded-xl transition-all duration-300 group relative",
-                showSettings ? "bg-zinc-800 text-zinc-100" : "hover:bg-zinc-800 text-zinc-400"
+                "p-2 rounded-[0.85rem] transition-all duration-300 group relative",
+                showSettings ? "bg-zinc-800/80 text-zinc-100 shadow-sm" : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200"
               )}
               title={isAr ? 'الإعدادات' : 'Settings'}
             >
-              <Settings className="w-5 h-5" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Settings className="w-5 h-5 group-hover:rotate-45 transition-transform duration-500" />
             </button>
           </div>
         </div>
@@ -494,7 +497,7 @@ export default function App() {
             
             {/* Main Date Card */}
             <motion.div 
-              className="app-card rounded-[2rem] p-8 lg:p-10 flex flex-col items-center justify-center relative overflow-hidden h-[165px]"
+              className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-zinc-900 to-black border border-zinc-800/60 p-8 lg:p-10 flex flex-col items-center justify-center shadow-2xl"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -502,16 +505,25 @@ export default function App() {
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEndHandler}
             >
-              <div className="text-center space-y-6 z-10 w-full">
-                <div className="text-[12px] font-light text-zinc-400 mb-2">{dayNameStr}</div>
+              {/* Decorative Background Glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[200px] h-[100px] bg-indigo-500/20 blur-[80px] pointer-events-none" />
+
+              <div className="text-center space-y-5 z-10 w-full">
+                <div className="text-[13px] font-medium tracking-widest text-indigo-400/80 uppercase mb-2">
+                  {dayNameStr}
+                </div>
                 
-                <div className="text-[25px] font-light tracking-tight leading-tight text-zinc-50">
+                <div className="text-3xl sm:text-4xl font-light tracking-tight text-white mb-2">
                   {appSettings.primaryDate === 'gregorian' ? gregorianDateStr : hijriDateStr}
                 </div>
                 
-                <div className="w-16 h-[1px] bg-zinc-800 mx-auto my-6 rounded-full" />
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-12 h-[1px] bg-zinc-800/80 rounded-full" />
+                  <div className="w-2 h-2 rounded-full bg-indigo-500/50" />
+                  <div className="w-12 h-[1px] bg-zinc-800/80 rounded-full" />
+                </div>
                 
-                <div className="text-[12px] font-light text-zinc-300">
+                <div className="text-sm font-light text-zinc-400 mt-2">
                   {appSettings.primaryDate === 'gregorian' ? hijriDateStr : gregorianDateStr}
                 </div>
               </div>
@@ -519,40 +531,41 @@ export default function App() {
               {/* Navigation Arrows */}
               <button 
                 onClick={isAr ? handleNextDay : handlePrevDay} 
-                className="absolute left-2 sm:left-3 lg:left-5 top-1/2 -translate-y-1/2 p-4 sm:p-3 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/50 rounded-full transition-all active:scale-90"
+                className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 p-3 text-zinc-500 hover:text-white hover:bg-zinc-800/50 rounded-full transition-all active:scale-95"
               >
-                <ChevronLeft className="w-[22px] h-[22px]" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               <button 
                 onClick={isAr ? handlePrevDay : handleNextDay} 
-                className="absolute right-2 sm:right-3 lg:right-5 top-1/2 -translate-y-1/2 p-4 sm:p-3 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/50 rounded-full transition-all active:scale-90"
+                className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 p-3 text-zinc-500 hover:text-white hover:bg-zinc-800/50 rounded-full transition-all active:scale-95"
               >
-                <ChevronRight className="w-[22px] h-[22px]" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </motion.div>
 
             {/* Prayer Times Section */}
-            <div className="app-card rounded-[2rem] p-6 lg:p-8 flex flex-col gap-6 h-[265px]">
-              <div className="flex items-center justify-between h-[16px]">
+            <div className="relative overflow-hidden rounded-[2rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-8 flex flex-col gap-6 shadow-xl">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div>
-                    <h3 className="text-lg font-light text-zinc-100">
-                      {isAr ? 'أوقات الصلاة' : 'Prayer Times'}
-                    </h3>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="m17 12-5-5-5 5"/><path d="m17 22-5-5-5 5"/></svg>
                   </div>
+                  <h3 className="text-lg font-medium tracking-wide text-zinc-100">
+                    {isAr ? 'أوقات الصلاة' : 'Prayer Times'}
+                  </h3>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-6 xl:grid-cols-3 gap-2 sm:gap-3 h-[192px]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
                 {prayerList.map((prayer) => (
                   <div 
                     key={prayer.id} 
-                    className="p-2.5 sm:p-3 rounded-2xl bg-zinc-950 border border-zinc-900 flex flex-col items-center justify-center gap-1 transition-all hover:border-zinc-700 group"
+                    className="p-3 sm:p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/50 flex flex-col items-center justify-center gap-1.5 transition-all hover:bg-zinc-800/60 hover:border-zinc-700/80 group"
                   >
-                    <span className={cn("text-[9px] sm:text-[10px] text-zinc-500 font-light uppercase group-hover:text-zinc-400", !isAr && "tracking-wider")}>
+                    <span className={cn("text-[11px] sm:text-xs text-zinc-500 font-medium uppercase group-hover:text-zinc-400 transition-colors", !isAr && "tracking-wider")}>
                       {isAr ? prayer.nameAr : prayer.nameEn}
                     </span>
-                    <span className="text-xs sm:text-sm font-light text-zinc-100 font-secondary">
+                    <span className="text-sm sm:text-base font-light text-zinc-100 font-secondary tracking-wide">
                       {prayer.time}
                     </span>
                   </div>
@@ -560,66 +573,106 @@ export default function App() {
               </div>
             </div>
 
-            {/* Age Calculator Card */}
-            <div className="app-card rounded-[2rem] p-6 lg:p-8 flex flex-col gap-6 h-[220px]">
-              <h3 className="text-lg font-light text-zinc-100">{isAr ? 'حساب العمر' : 'Age Calculator'}</h3>
-              <div className="flex gap-3">
-                <input 
-                  type="date" 
-                  value={dob} 
-                  onChange={(e) => setDob(e.target.value)}
-                  className="bg-black/40 border border-zinc-800 rounded-2xl px-4 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all placeholder:text-zinc-600 cursor-pointer h-[48px] text-sm"
-                  style={{ width: '150px' }}
-                />
-                <select 
-                  className="flex-1 bg-black/40 border border-zinc-800 rounded-2xl px-4 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
-                  value={dobDateType}
-                  onChange={(e) => setDobDateType(e.target.value as 'gregorian' | 'hijri')}
-                >
-                  <option value="gregorian">{isAr ? 'ميلادي' : 'Gregorian'}</option>
-                  <option value="hijri">{isAr ? 'هجري' : 'Hijri'}</option>
-                </select>
+            {/* Date Converter Card */}
+            <div className="relative overflow-hidden rounded-[2rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-8 flex flex-col gap-6 shadow-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="m15 4 3 3-3 3"/></svg>
+                  </div>
+                  <h3 className="text-lg font-medium tracking-wide text-zinc-100">
+                    {isAr ? 'تحويل التاريخ' : 'Date Converter'}
+                  </h3>
+                </div>
+
+                <div className="flex bg-zinc-900/80 border border-zinc-800/80 rounded-xl overflow-hidden p-1 backdrop-blur-sm">
+                  <button
+                    onClick={() => setConvMode('g2h')}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                      convMode === 'g2h' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                    )}
+                  >
+                    {isAr ? 'للهجري' : 'To Hijri'}
+                  </button>
+                  <button
+                    onClick={() => setConvMode('h2g')}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                      convMode === 'h2g' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                    )}
+                  >
+                    {isAr ? 'للميلادي' : 'To Gregorian'}
+                  </button>
+                </div>
               </div>
-              {age ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: isAr ? 'السنة' : 'Years', value: age.years },
-                    { label: isAr ? 'الشهر' : 'Months', value: age.months },
-                    { label: isAr ? 'اليوم' : 'Days', value: age.days },
-                  ].map((item, idx) => (
-                    <div key={idx} className="bg-black/40 border border-zinc-800 rounded-2xl p-3 text-center flex flex-col justify-center items-center h-[65px]">
-                      <div className="text-xl font-bold text-zinc-100 tracking-tight">{item.value}</div>
-                      <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">{item.label}</div>
-                    </div>
-                  ))}
+
+              {convMode === 'g2h' ? (
+                <div className="flex gap-3 items-center">
+                  <input 
+                    type="date" 
+                    value={convGregDate} 
+                    onChange={(e) => setConvGregDate(e.target.value)}
+                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-4 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
+                  />
                 </div>
               ) : (
-                <div className="text-center py-6 text-zinc-600 text-xs font-light">
-                  {isAr ? 'حدد تاريخ ميلادك للحساب' : 'Select birth date to calculate'}
+                <div className="flex gap-2">
+                  <input 
+                    type="number" 
+                    value={convHijriD || ''}
+                    onChange={(e) => setConvHijriD(Math.min(30, Math.max(1, parseInt(e.target.value) || 1)))}
+                    placeholder={isAr ? 'يوم' : 'DD'}
+                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
+                  />
+                  <input 
+                    type="number" 
+                    value={convHijriM || ''}
+                    onChange={(e) => setConvHijriM(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))}
+                    placeholder={isAr ? 'شهر' : 'MM'}
+                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
+                  />
+                  <input 
+                    type="number" 
+                    value={convHijriY || ''}
+                    onChange={(e) => setConvHijriY(Math.min(9999, Math.max(1, parseInt(e.target.value) || 1)))}
+                    placeholder={isAr ? 'سنة' : 'YYYY'}
+                    className="w-20 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
+                  />
                 </div>
               )}
+
+              <div className="bg-gradient-to-r from-zinc-900/40 to-zinc-900/20 border border-zinc-800/50 rounded-2xl p-5 text-center flex flex-col justify-center items-center min-h-[72px] mt-1 relative overflow-hidden group">
+                {/* Subtle highlight */}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                {convertedDateStr ? (
+                  <div className="text-xl sm:text-2xl font-light text-zinc-100 tracking-tight font-secondary z-10">{convertedDateStr}</div>
+                ) : (
+                  <div className="text-sm text-zinc-500 font-light z-10">{isAr ? 'أدخل تاريخاً صحيحاً' : 'Enter a valid date'}</div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right Column: Calendar Grid & Academic Timeline */}
           <div className="xl:col-span-7 flex flex-col gap-6">
-            <div className="app-card rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 lg:p-10 flex flex-col">
-              <div className="flex items-center justify-between mb-6 sm:mb-8">
-                <h2 className="text-xl sm:text-2xl font-light tracking-tight font-secondary">
+            <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-[#09090b] border border-zinc-800/60 p-5 sm:p-7 lg:p-10 flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between mb-8 sm:mb-10">
+                <h2 className="text-xl sm:text-3xl font-light tracking-tight font-secondary text-zinc-100">
                   {format(currentMonth, 'MMMM yyyy', { locale: isAr ? arSA : enUS })}
                 </h2>
-                <div className="flex gap-1.5 sm:gap-2">
+                <div className="flex gap-2">
                   <button 
                     onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                    className="p-2 sm:p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-all text-zinc-400 hover:text-zinc-100"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-zinc-900/50 hover:bg-zinc-800 border border-zinc-800/80 transition-all text-zinc-400 hover:text-zinc-100 hover:scale-105 active:scale-95"
                   >
-                    {isAr ? <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {isAr ? <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />}
                   </button>
                   <button 
                     onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                    className="p-2 sm:p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-all text-zinc-400 hover:text-zinc-100"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-zinc-900/50 hover:bg-zinc-800 border border-zinc-800/80 transition-all text-zinc-400 hover:text-zinc-100 hover:scale-105 active:scale-95"
                   >
-                    {isAr ? <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {isAr ? <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" /> : <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />}
                   </button>
                 </div>
               </div>
@@ -674,14 +727,14 @@ export default function App() {
                         }
                       }}
                       className={cn(
-                        "flex flex-col rounded-xl sm:rounded-2xl transition-all relative group font-light overflow-hidden",
+                        "flex flex-col rounded-[1.125rem] sm:rounded-2xl transition-all duration-300 relative group font-light overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                         appSettings.calendarView === 'details' 
-                          ? "min-h-[70px] xs:min-h-[85px] sm:min-h-[100px] lg:min-h-[120px] p-1 sm:p-2 items-start justify-start border border-zinc-900/40 hover:border-zinc-700/50" 
-                          : "aspect-square items-center justify-center text-sm sm:text-base lg:text-lg",
-                        !isCurrentMonth && "text-zinc-600",
+                          ? "min-h-[70px] xs:min-h-[85px] sm:min-h-[100px] lg:min-h-[120px] p-1.5 sm:p-2 items-start justify-start border border-zinc-800/40 hover:border-zinc-700/80 bg-zinc-900/30" 
+                          : "aspect-square items-center justify-center text-sm sm:text-base lg:text-lg bg-zinc-900/30 border border-zinc-800/40 hover:border-zinc-700/80",
+                        !isCurrentMonth && "text-zinc-600 opacity-50",
                         isCurrentMonth && !isSelected && !isTodayDate && "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100",
-                        isTodayDate && !isSelected && "text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20",
-                        isSelected && "bg-zinc-100 text-zinc-950 font-bold shadow-lg scale-[1.02] sm:scale-105 z-10"
+                        isTodayDate && !isSelected && "text-indigo-300 font-medium bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]",
+                        isSelected && "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white font-medium shadow-[0_4px_20px_rgba(99,102,241,0.4)] scale-105 z-10 border-indigo-400/50"
                       )}
                     >
                       <div className={cn(
@@ -694,8 +747,8 @@ export default function App() {
                         )}>{format(day, dateFormat)}</span>
                         <span className={cn(
                           "leading-none font-secondary",
-                          appSettings.calendarView === 'details' ? "text-[8px] sm:text-[10px] opacity-80" : "text-[9px] sm:text-[10px] lg:text-xs opacity-60",
-                          isSelected ? "text-zinc-950" : "text-zinc-500"
+                          appSettings.calendarView === 'details' ? "text-[8px] sm:text-[10px] opacity-70" : "text-[9px] sm:text-[10px] lg:text-xs opacity-60",
+                          isSelected ? "text-indigo-100" : "text-zinc-500"
                         )}>
                           {getHijriDay(day)}
                         </span>
@@ -703,65 +756,65 @@ export default function App() {
                       
                       {/* Compact View */}
                       {appSettings.calendarView === 'compact' && (
-                        <div className="absolute bottom-1 sm:bottom-1.5 flex gap-0.5 sm:gap-1">
+                        <div className="absolute bottom-1.5 sm:bottom-2 flex gap-1 sm:gap-1.5">
                           {hasAcademicEvent && (
-                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", isSelected ? "bg-indigo-600" : "bg-emerald-400")} />
+                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full transition-colors", isSelected ? "bg-white" : "bg-emerald-400")} />
                           )}
                           {hasSalaryEvent && (
-                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", isSelected ? "bg-indigo-600" : "bg-emerald-400")} />
+                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full transition-colors", isSelected ? "bg-white" : "bg-emerald-400")} />
                           )}
                           {hasEvent && (
-                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", isSelected ? "bg-indigo-600" : "bg-indigo-500")} />
+                            <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full transition-colors", isSelected ? "bg-indigo-300" : "bg-indigo-400")} />
                           )}
                         </div>
                       )}
 
                       {/* Stacked View */}
                       {appSettings.calendarView === 'stacked' && (
-                        <div className="absolute bottom-1 sm:bottom-1.5 w-full px-1 sm:px-2 flex flex-col gap-[1px] sm:gap-0.5 items-center">
+                        <div className="absolute bottom-1.5 sm:bottom-2 w-full px-1.5 sm:px-2 flex flex-col gap-[2px] sm:gap-[3px] items-center">
                           {hasAcademicEvent && (
-                            <div className={cn("w-full max-w-[12px] sm:max-w-[20px] h-[2px] sm:h-1 rounded-full", isSelected ? "bg-indigo-600" : "bg-emerald-400")} />
+                            <div className={cn("w-full max-w-[12px] sm:max-w-[18px] h-[2px] sm:h-[3px] rounded-full transition-colors", isSelected ? "bg-white" : "bg-emerald-400")} />
                           )}
                           {hasSalaryEvent && (
-                            <div className={cn("w-full max-w-[12px] sm:max-w-[20px] h-[2px] sm:h-1 rounded-full", isSelected ? "bg-indigo-600" : "bg-emerald-400")} />
+                            <div className={cn("w-full max-w-[12px] sm:max-w-[18px] h-[2px] sm:h-[3px] rounded-full transition-colors", isSelected ? "bg-white" : "bg-emerald-400")} />
                           )}
                           {hasEvent && (
-                            <div className={cn("w-full max-w-[12px] sm:max-w-[20px] h-[2px] sm:h-1 rounded-full", isSelected ? "bg-indigo-600" : "bg-indigo-500")} />
+                            <div className={cn("w-full max-w-[12px] sm:max-w-[18px] h-[2px] sm:h-[3px] rounded-full transition-colors", isSelected ? "bg-indigo-300" : "bg-indigo-400")} />
                           )}
                         </div>
                       )}
 
                       {/* Details View */}
                       {appSettings.calendarView === 'details' && (
-                        <div className="w-full flex flex-col gap-[1px] sm:gap-1 mt-0.5 sm:mt-1 overflow-hidden">
+                        <div className="w-full flex flex-col gap-[2px] sm:gap-1 mt-1 sm:mt-1.5 overflow-hidden">
                           {daySalaryEvents.slice(0, 1).map((e, idx) => (
                             <div key={`sal-${idx}`} className={cn(
-                              "text-[7px] xs:text-[8px] sm:text-[10px] px-0.5 sm:px-1.5 py-[1px] sm:py-0.5 rounded-sm truncate w-full text-start",
-                              isSelected ? "bg-indigo-500/20 text-indigo-900 font-bold" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              "text-[7.5px] xs:text-[8.5px] sm:text-[10px] px-1 sm:px-1.5 py-[2px] sm:py-0.5 rounded-[4px] truncate w-full text-start",
+                              isSelected ? "bg-white/20 text-white font-medium" : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/10"
                             )}>
                               {isAr ? 'راتب' : 'Salary'}
                             </div>
                           ))}
                           {dayAcademicEvents.slice(0, 1).map((e, idx) => (
                             <div key={`aca-${idx}`} className={cn(
-                              "text-[7px] xs:text-[8px] sm:text-[10px] px-0.5 sm:px-1.5 py-[1px] sm:py-0.5 rounded-sm truncate w-full text-start",
-                              isSelected ? "bg-indigo-500/20 text-indigo-900 font-bold" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              "text-[7.5px] xs:text-[8.5px] sm:text-[10px] px-1 sm:px-1.5 py-[2px] sm:py-0.5 rounded-[4px] truncate w-full text-start",
+                              isSelected ? "bg-white/20 text-white font-medium" : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/10"
                             )}>
                               {isAr ? e.titleAr : e.titleEn}
                             </div>
                           ))}
                           {dayEvents.slice(0, 2).map((e, idx) => (
                             <div key={`evt-${idx}`} className={cn(
-                              "text-[7px] xs:text-[8px] sm:text-[10px] px-0.5 sm:px-1.5 py-[1px] sm:py-0.5 rounded-sm truncate w-full text-start",
-                              isSelected ? "bg-indigo-500/20 text-indigo-900 font-bold" : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                              "text-[7.5px] xs:text-[8.5px] sm:text-[10px] px-1 sm:px-1.5 py-[2px] sm:py-0.5 rounded-[4px] truncate w-full text-start",
+                              isSelected ? "bg-indigo-400/30 text-white font-medium" : "bg-indigo-500/15 text-indigo-300 border border-indigo-500/10"
                             )}>
                               {e.title}
                             </div>
                           ))}
                           {(dayEvents.length + dayAcademicEvents.length + daySalaryEvents.length) > 3 && (
                             <div className={cn(
-                              "text-[7px] xs:text-[8px] sm:text-[10px] px-0.5 sm:px-1.5 text-start font-bold",
-                              isSelected ? "text-indigo-900" : "text-zinc-500"
+                              "text-[7px] xs:text-[8px] sm:text-[10px] px-1 sm:px-1.5 text-start font-medium",
+                              isSelected ? "text-indigo-200" : "text-zinc-500"
                             )}>
                               +{dayEvents.length + dayAcademicEvents.length + daySalaryEvents.length - 3}
                             </div>
@@ -781,14 +834,17 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="app-card rounded-[2.5rem] p-6 lg:p-10"
+                  className="relative overflow-hidden rounded-[2.5rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-10 shadow-2xl"
                 >
                   <div className="flex items-center gap-3 mb-10">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400">
+                      <Banknote className="w-5 h-5" />
+                    </div>
                     <div>
-                      <h3 className="text-xl font-light text-zinc-100">
+                      <h3 className="text-xl font-medium tracking-wide text-zinc-100">
                         {isAr ? 'مواعيد الرواتب' : 'Salary Dates'}
                       </h3>
-                      <p className="text-xs text-zinc-500 font-light mt-0.5">
+                      <p className="text-sm text-zinc-500 font-light mt-0.5">
                         {isAr ? 'مواعيد صرف الرواتب الحكومية' : 'Government salary payment dates'}
                       </p>
                     </div>
@@ -802,19 +858,19 @@ export default function App() {
                         <div 
                           key={event.date} 
                           className={cn(
-                            "p-5 rounded-2xl border transition-all flex flex-col gap-2",
-                            isPast ? "bg-zinc-900/30 border-zinc-900/50 opacity-60" : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                            "p-5 rounded-2xl border transition-all flex flex-col gap-2 group",
+                            isPast ? "bg-zinc-900/30 border-zinc-900/50 opacity-60" : "bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/50 hover:border-emerald-500/30"
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={cn("text-[10px] font-light text-zinc-500 uppercase", !isAr && "tracking-wider")}>
+                            <span className={cn("text-[11px] font-medium text-zinc-500 uppercase", !isAr && "tracking-wider")}>
                               {format(eventDate, 'EEEE', { locale: isAr ? arSA : enUS })}
                             </span>
-                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/30 transition-colors">
                               {isAr ? 'راتب' : 'Salary'}
                             </span>
                           </div>
-                          <h4 className="text-sm font-light text-zinc-100">
+                          <h4 className="text-sm font-medium text-zinc-100 mt-1">
                             {isAr ? event.titleAr : event.titleEn}
                           </h4>
                           <div className="text-xs text-zinc-400 font-light">
@@ -835,21 +891,25 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="app-card rounded-[2.5rem] p-6 lg:p-10"
+                  className="relative overflow-hidden rounded-[2.5rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-10 shadow-2xl"
                 >
                   <div className="flex items-center gap-3 mb-10">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/10 text-amber-400">
+                      <ListTodo className="w-5 h-5" />
+                    </div>
                     <div>
-                      <h3 className="text-xl font-light text-zinc-100">
+                      <h3 className="text-xl font-medium tracking-wide text-zinc-100">
                         {isAr ? 'جميع الأحداث' : 'All Events'}
                       </h3>
-                      <p className="text-xs text-zinc-500 font-light mt-0.5">
+                      <p className="text-sm text-zinc-500 font-light mt-0.5">
                         {isAr ? 'قائمة بجميع الأحداث المضافة' : 'List of all added events'}
                       </p>
                     </div>
                   </div>
                   
                   {events.length === 0 ? (
-                    <div className="text-center py-20 bg-zinc-900/30 rounded-3xl border border-dashed border-zinc-800">
+                    <div className="text-center py-20 bg-zinc-900/20 rounded-3xl border border-dashed border-zinc-800/60 flex flex-col items-center justify-center gap-3">
+                      <CalendarDays className="w-10 h-10 text-zinc-700" />
                       <p className="text-zinc-500 font-light">{isAr ? 'لا توجد أحداث مضافة' : 'No events added yet'}</p>
                     </div>
                   ) : (
@@ -934,25 +994,30 @@ export default function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="app-card rounded-[2.5rem] p-6 lg:p-10"
+                  className="relative overflow-hidden rounded-[2.5rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-10 shadow-2xl"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
-                    <div>
-                      <h3 className="text-xl font-light text-zinc-100">
-                        {isAr ? 'التقويم الدراسي والمناسبات' : 'Academic & National Calendar'}
-                      </h3>
-                      <p className="text-xs text-zinc-500 font-light mt-0.5">
-                        {isAr ? 'مواعيد الفصول الدراسية والمناسبات الوطنية' : 'Semester dates and national holidays'}
-                      </p>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-medium tracking-wide text-zinc-100">
+                          {isAr ? 'التقويم الدراسي والمناسبات' : 'Academic & Events'}
+                        </h3>
+                        <p className="text-sm text-zinc-500 font-light mt-0.5">
+                          {isAr ? 'أهم المواعيد الدراسية والمناسبات الوطنية' : 'Important academic dates and national events'}
+                        </p>
+                      </div>
                     </div>
                     
-                    <div className="flex bg-zinc-950 border border-zinc-800 rounded-xl p-1 overflow-x-auto hide-scrollbar">
+                    <div className="flex bg-zinc-900/60 backdrop-blur-md border border-zinc-800/60 rounded-xl p-1 overflow-x-auto hide-scrollbar">
                       {Array.from(new Set(academicEvents.map(e => e.hijriYear))).sort().map(year => (
                         <button
                           key={year}
                           onClick={() => setSelectedAcademicYear(year)}
                           className={cn(
-                            "px-4 py-2 rounded-lg text-sm font-light transition-all whitespace-nowrap",
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                             selectedAcademicYear === year 
                               ? "bg-zinc-800 text-zinc-100 shadow-sm" 
                               : "text-zinc-500 hover:text-zinc-300"
@@ -975,26 +1040,26 @@ export default function App() {
                           <div 
                             key={event.id} 
                             className={cn(
-                              "p-5 rounded-2xl border transition-all flex flex-col gap-2",
-                              isPast ? "bg-zinc-900/30 border-zinc-900/50 opacity-60" : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                              "p-5 rounded-2xl border transition-all flex flex-col gap-2 group",
+                              isPast ? "bg-zinc-900/30 border-zinc-900/50 opacity-60" : "bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/50 hover:border-indigo-500/30"
                             )}
                           >
                             <div className="flex items-center justify-between">
-                              <span className={cn("text-[10px] font-light text-zinc-500 uppercase", !isAr && "tracking-wider")}>
+                              <span className={cn("text-[11px] font-medium text-zinc-500 uppercase", !isAr && "tracking-wider")}>
                                 {format(eventDate, 'EEEE', { locale: isAr ? arSA : enUS })}
                               </span>
                               <span className={cn(
-                                "text-[10px] px-2 py-0.5 rounded-full border",
-                                event.type === 'holiday' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                                event.type === 'exam' ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-                                "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                                "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+                                event.type === 'holiday' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/30" :
+                                event.type === 'exam' ? "bg-amber-500/10 border-amber-500/20 text-amber-400 group-hover:bg-amber-500/20 group-hover:border-amber-500/30" :
+                                "bg-indigo-500/10 border-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:border-indigo-500/30"
                               )}>
                                 {event.type === 'holiday' ? (isAr ? 'إجازة' : 'Holiday') :
                                  event.type === 'exam' ? (isAr ? 'اختبارات' : 'Exams') :
                                  (isAr ? 'دراسة' : 'Academic')}
                               </span>
                             </div>
-                            <h4 className="text-sm font-light text-zinc-100 truncate">
+                            <h4 className="text-sm font-medium text-zinc-100 truncate mt-1">
                               {isAr ? event.titleAr : event.titleEn}
                             </h4>
                             <div className="text-xs text-zinc-400 font-light">
@@ -1059,69 +1124,69 @@ export default function App() {
                     <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Language */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-light text-zinc-400 ms-1">
-                        {isAr ? 'لغة التطبيق' : 'App Language'}
-                      </label>
-                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
-                        <button 
-                          onClick={() => setLang('ar')}
-                          className={cn(
-                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
-                            lang === 'ar' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
-                          )}
-                        >
-                          العربية
-                        </button>
-                        <button 
-                          onClick={() => setLang('en')}
-                          className={cn(
-                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
-                            lang === 'en' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
-                          )}
-                        >
-                          English
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Hijri Adjustment */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-light text-zinc-400 ms-1">
-                        {isAr ? 'تعديل التاريخ الهجري' : 'Hijri Adjustment'}
-                      </label>
-                      <div className="flex items-center bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
-                        <button 
-                          onClick={() => setHijriOffset(prev => prev - 1)}
-                          className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-950/50 rounded-xl border border-zinc-800/50"
-                        >
-                          -
-                        </button>
-                        <div className="flex-1 text-center text-lg font-light text-zinc-100">
-                          {hijriOffset > 0 ? `+${hijriOffset}` : hijriOffset}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Language */}
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-zinc-400 ms-1">
+                          {isAr ? 'لغة التطبيق' : 'App Language'}
+                        </label>
+                        <div className="flex bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] p-1.5 shadow-inner">
+                          <button 
+                            onClick={() => setLang('ar')}
+                            className={cn(
+                              "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                              lang === 'ar' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
+                            )}
+                          >
+                            العربية
+                          </button>
+                          <button 
+                            onClick={() => setLang('en')}
+                            className={cn(
+                              "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                              lang === 'en' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
+                            )}
+                          >
+                            English
+                          </button>
                         </div>
-                        <button 
-                          onClick={() => setHijriOffset(prev => prev + 1)}
-                          className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-950/50 rounded-xl border border-zinc-800/50"
-                        >
-                          +
-                        </button>
                       </div>
-                    </div>
+
+                      {/* Hijri Adjustment */}
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-zinc-400 ms-1">
+                          {isAr ? 'تعديل التاريخ الهجري' : 'Hijri Adjustment'}
+                        </label>
+                        <div className="flex items-center bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] p-1.5 shadow-inner">
+                          <button 
+                            onClick={() => setHijriOffset(prev => prev - 1)}
+                            className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-800/50 hover:bg-zinc-800 rounded-xl border border-zinc-700/50"
+                          >
+                            -
+                          </button>
+                          <div className="flex-1 text-center text-lg font-light text-zinc-100">
+                            {hijriOffset > 0 ? `+${hijriOffset}` : hijriOffset}
+                          </div>
+                          <button 
+                            onClick={() => setHijriOffset(prev => prev + 1)}
+                            className="w-12 h-12 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors bg-zinc-800/50 hover:bg-zinc-800 rounded-xl border border-zinc-700/50"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
 
                     {/* Primary Date */}
                     <div className="space-y-3">
-                      <label className="text-sm font-light text-zinc-400 ms-1">
+                      <label className="text-sm font-medium text-zinc-400 ms-1">
                         {isAr ? 'التاريخ الأساسي' : 'Primary Date'}
                       </label>
-                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                      <div className="flex bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] p-1.5 shadow-inner">
                         <button 
                           onClick={() => setAppSettings({ ...appSettings, primaryDate: 'hijri' })}
                           className={cn(
-                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
-                            appSettings.primaryDate === 'hijri' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                            "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                            appSettings.primaryDate === 'hijri' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
                           )}
                         >
                           {isAr ? 'هجري' : 'Hijri'}
@@ -1129,8 +1194,8 @@ export default function App() {
                         <button 
                           onClick={() => setAppSettings({ ...appSettings, primaryDate: 'gregorian' })}
                           className={cn(
-                            "flex-1 py-3 rounded-xl text-sm font-light transition-all",
-                            appSettings.primaryDate === 'gregorian' ? "bg-zinc-100 text-zinc-950 font-bold shadow-xl" : "text-zinc-500 hover:text-zinc-300"
+                            "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                            appSettings.primaryDate === 'gregorian' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
                           )}
                         >
                           {isAr ? 'ميلادي' : 'Gregorian'}
@@ -1140,15 +1205,15 @@ export default function App() {
 
                     {/* Calendar View */}
                     <div className="space-y-3">
-                      <label className="text-sm font-light text-zinc-400 ms-1">
+                      <label className="text-sm font-medium text-zinc-400 ms-1">
                         {isAr ? 'عرض الجدول' : 'Calendar View'}
                       </label>
-                      <div className="flex bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] p-1.5">
+                      <div className="flex bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] p-1.5 shadow-inner">
                         <button 
                           onClick={() => setAppSettings({ ...appSettings, calendarView: 'compact' })}
                           className={cn(
-                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
-                            appSettings.calendarView === 'compact' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                            "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                            appSettings.calendarView === 'compact' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
                           )}
                         >
                           {isAr ? 'مضغوط' : 'Compact'}
@@ -1156,8 +1221,8 @@ export default function App() {
                         <button 
                           onClick={() => setAppSettings({ ...appSettings, calendarView: 'stacked' })}
                           className={cn(
-                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
-                            appSettings.calendarView === 'stacked' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                            "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                            appSettings.calendarView === 'stacked' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
                           )}
                         >
                           {isAr ? 'مكدس' : 'Stacked'}
@@ -1165,8 +1230,8 @@ export default function App() {
                         <button 
                           onClick={() => setAppSettings({ ...appSettings, calendarView: 'details' })}
                           className={cn(
-                            "flex-1 py-3 rounded-xl text-[11px] font-bold transition-all",
-                            appSettings.calendarView === 'details' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                            "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                            appSettings.calendarView === 'details' ? "bg-zinc-800 text-zinc-100 shadow-md" : "text-zinc-500 hover:text-zinc-300"
                           )}
                         >
                           {isAr ? 'تفصيلي' : 'Details'}
@@ -1185,16 +1250,16 @@ export default function App() {
                     <div className="h-px flex-1 bg-zinc-900/50 mx-6" />
                   </div>
 
-                  <div className="space-y-8">
+                   <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <label className="text-sm font-light text-zinc-400 ms-1">
+                        <label className="text-sm font-medium text-zinc-400 ms-1">
                           {isAr ? 'المدينة' : 'City'}
                         </label>
                         <select 
                           value={appSettings.cityId}
                           onChange={(e) => setAppSettings({ ...appSettings, cityId: e.target.value })}
-                          className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-light text-base appearance-none"
+                          className="w-full bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium text-sm sm:text-base appearance-none shadow-inner"
                         >
                           {GCC_CITIES.map(city => (
                             <option key={city.id} value={city.id} className="bg-zinc-950">
@@ -1205,13 +1270,13 @@ export default function App() {
                       </div>
 
                       <div className="space-y-3">
-                        <label className="text-sm font-light text-zinc-400 ms-1">
+                        <label className="text-sm font-medium text-zinc-400 ms-1">
                           {isAr ? 'طريقة الحساب' : 'Calculation Method'}
                         </label>
                         <select 
                           value={appSettings.calculationMethod}
                           onChange={(e) => setAppSettings({ ...appSettings, calculationMethod: e.target.value })}
-                          className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded-[1.5rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-light text-base appearance-none"
+                          className="w-full bg-zinc-900/40 border border-zinc-800/80 rounded-[1.25rem] px-6 py-4 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium text-sm sm:text-base appearance-none shadow-inner"
                         >
                           <option value="UmmAlQura" className="bg-zinc-950">{isAr ? 'أم القرى' : 'Umm Al-Qura'}</option>
                           <option value="Dubai" className="bg-zinc-950">{isAr ? 'دبي' : 'Dubai'}</option>
@@ -1235,10 +1300,10 @@ export default function App() {
                   </div>
                   
                   <div className="space-y-4">
-                    <label className="text-sm font-light text-zinc-400 ms-1">
+                    <label className="text-sm font-medium text-zinc-400 ms-1">
                       {isAr ? 'دولة الرواتب' : 'Salary Country'}
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {[
                         { id: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia' },
                         { id: 'AE', nameAr: 'الإمارات العربية المتحدة', nameEn: 'United Arab Emirates' },
@@ -1251,10 +1316,10 @@ export default function App() {
                           key={country.id}
                           onClick={() => setAppSettings({ ...appSettings, salaryCountry: country.id as any })}
                           className={cn(
-                            "px-4 py-4 rounded-[1.5rem] border text-sm font-light transition-all",
+                            "px-4 py-4 rounded-[1.25rem] border text-sm font-medium transition-all duration-300",
                             appSettings.salaryCountry === country.id 
-                              ? "bg-zinc-100 text-zinc-950 border-zinc-100 font-bold shadow-xl" 
-                              : "bg-zinc-900/50 border-zinc-800/50 text-zinc-500 hover:border-zinc-700"
+                              ? "bg-zinc-800 text-zinc-100 border-zinc-700 shadow-md" 
+                              : "bg-zinc-900/40 border-zinc-800/80 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300 shadow-inner"
                           )}
                         >
                           {isAr ? country.nameAr : country.nameEn}
@@ -1291,6 +1356,47 @@ export default function App() {
                       </div>
 
                       <div className="space-y-6">
+                        {/* Paper Size & Orientation */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
+                              {isAr ? 'حجم الورق' : 'Paper Size'}
+                            </label>
+                            <div className="flex bg-black/40 border border-zinc-800 rounded-2xl p-1">
+                              <select 
+                                value={printPaperSize}
+                                onChange={(e) => setPrintPaperSize(e.target.value as any)}
+                                className="w-full bg-transparent border-none text-zinc-300 text-sm py-2 px-3 focus:outline-none focus:ring-0 cursor-pointer appearance-none text-center font-medium"
+                              >
+                                <option value="A4" className="bg-zinc-900">A4</option>
+                                <option value="A3" className="bg-zinc-900">A3</option>
+                                <option value="Letter" className="bg-zinc-900">Letter</option>
+                                <option value="Legal" className="bg-zinc-900">Legal</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
+                              {isAr ? 'الاتجاه' : 'Orientation'}
+                            </label>
+                            <div className="flex bg-black/40 border border-zinc-800 rounded-2xl p-1">
+                              <button
+                                onClick={() => setPrintOrientation('portrait')}
+                                className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all", printOrientation === 'portrait' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                              >
+                                {isAr ? 'طولي' : 'Portrait'}
+                              </button>
+                              <button
+                                onClick={() => setPrintOrientation('landscape')}
+                                className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all", printOrientation === 'landscape' ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300")}
+                              >
+                                {isAr ? 'عرضي' : 'Landscape'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Duration */}
                         <div className="space-y-3">
                           <label className={cn("text-[10px] font-bold text-zinc-500 ms-1 uppercase", !isAr && "tracking-[0.2em]")}>
@@ -1453,7 +1559,7 @@ export default function App() {
                   </div>
 
                   <div className="p-8 rounded-[2rem] bg-zinc-900/30 border border-zinc-900/50">
-                    <p className="text-[11px] text-zinc-500 font-light leading-relaxed text-center max-w-md mx-auto">
+                    <p className="text-[11px] text-zinc-500 font-light leading-relaxed text-center max-w-md mx-auto whitespace-pre-wrap">
                       {LEGAL_FOOTER}
                     </p>
                   </div>
@@ -1766,21 +1872,21 @@ export default function App() {
 
       {/* Print View */}
       <div className={cn(
-        "hidden print:flex w-full min-h-screen flex-col p-4 sm:p-8 print:p-6",
+        "hidden print:flex w-full h-[100vh] flex-col p-4 sm:p-8 print:p-8",
         printDesign === 'original' ? "bg-[#020202] text-zinc-100" : 
         printDesign === 'custom' ? "bg-[#f8fafc] text-slate-900" : 
         printDesign === 'modern' ? "bg-white text-zinc-900 modern-bg" : "bg-white text-black"
       )} dir={isAr ? 'rtl' : 'ltr'}>
         <style type="text/css" media="print">
           {`
-            @page { size: landscape; margin: 0; }
+            @page { size: ${printPaperSize} ${printOrientation}; margin: 0; }
             body { 
               -webkit-print-color-adjust: exact; 
               print-color-adjust: exact; 
               background: ${printDesign === 'original' ? '#020202' : printDesign === 'custom' ? '#f8fafc' : 'white'} !important; 
               margin: 0;
               padding: 0;
-              font-family: ${isAr ? '"IBM Plex Sans Arabic", sans-serif' : 'system-ui, sans-serif'};
+              font-family: ${isAr ? '"Thmanyah Sans", "IBM Plex Sans Arabic", sans-serif' : 'system-ui, sans-serif'};
             }
             ::-webkit-scrollbar { display: none; }
             .print-container {
@@ -1879,8 +1985,8 @@ export default function App() {
         <div className={cn(
           "flex-1 grid gap-2 sm:gap-4 min-h-0",
           printDuration === '6months' 
-            ? "grid-cols-2 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-2" 
-            : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 print:grid-rows-3"
+            ? (printOrientation === 'landscape' ? "grid-cols-2 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-2" : "grid-cols-2 lg:grid-cols-2 print:grid-cols-2 print:grid-rows-3")
+            : (printOrientation === 'landscape' ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 print:grid-rows-3" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-4")
         )}>
           {Array.from({ length: printDuration === '6months' ? 6 : 12 }).map((_, i) => {
             const monthDate = addMonths(startOfYear(currentMonth), i);
