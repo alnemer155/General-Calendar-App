@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+
 @font-face {
   font-family: 'Thmanyah Sans';
   src: url('/fonts/thmanyahsans-Light.woff2') format('woff2');
@@ -17,7 +19,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Thmanyah Sans", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans Arabic", "Thmanyah Sans", system-ui, sans-serif;
 }
 
 @utility app-card {

@@ -14,6 +14,88 @@ import { getSalaryDates } from './data/salaries';
 import { Banknote, ListTodo } from 'lucide-react';
 import { PRIVACY_POLICY, TERMS_OF_USE, DEVELOPER_RIGHTS, LEGAL_FOOTER } from './constants/legal';
 
+const HIJRI_MONTH_OPTIONS = [
+  { value: 1, nameAr: 'محرم', nameEn: 'Muharram' },
+  { value: 2, nameAr: 'صفر', nameEn: 'Safar' },
+  { value: 3, nameAr: 'ربيع الأول', nameEn: 'Rabi\' al-Awwal' },
+  { value: 4, nameAr: 'ربيع الآخر', nameEn: 'Rabi\' al-Thani' },
+  { value: 5, nameAr: 'جمادى الأولى', nameEn: 'Jumada al-Awwal' },
+  { value: 6, nameAr: 'جمادى الآخرة', nameEn: 'Jumada al-Thani' },
+  { value: 7, nameAr: 'رجب', nameEn: 'Rajab' },
+  { value: 8, nameAr: 'شعبان', nameEn: 'Sha\'ban' },
+  { value: 9, nameAr: 'رمضان', nameEn: 'Ramadan' },
+  { value: 10, nameAr: 'شوال', nameEn: 'Shawwal' },
+  { value: 11, nameAr: 'ذو القعدة', nameEn: 'Dhu al-Qi\'dah' },
+  { value: 12, nameAr: 'ذو الحجة', nameEn: 'Dhu al-Hijjah' }
+];
+
+function getZodiacSign(date: Date, isArabic: boolean) {
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) {
+    return { name: isArabic ? 'الجدي' : 'Capricorn', icon: '♑' };
+  } else if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) {
+    return { name: isArabic ? 'الدلو' : 'Aquarius', icon: '♒' };
+  } else if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) {
+    return { name: isArabic ? 'الحوت' : 'Pisces', icon: '♓' };
+  } else if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) {
+    return { name: isArabic ? 'الحمل' : 'Aries', icon: '♈' };
+  } else if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) {
+    return { name: isArabic ? 'الثور' : 'Taurus', icon: '♉' };
+  } else if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) {
+    return { name: isArabic ? 'الجوزاء' : 'Gemini', icon: '♊' };
+  } else if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) {
+    return { name: isArabic ? 'السرطان' : 'Cancer', icon: '🦀' };
+  } else if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) {
+    return { name: isArabic ? 'الأسد' : 'Leo', icon: '♌' };
+  } else if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) {
+    return { name: isArabic ? 'العذراء' : 'Virgo', icon: '♍' };
+  } else if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) {
+    return { name: isArabic ? 'الميزان' : 'Libra', icon: '♎' };
+  } else if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) {
+    return { name: isArabic ? 'العقرب' : 'Scorpio', icon: '🦂' };
+  } else if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) {
+    return { name: isArabic ? 'القوس' : 'Sagittarius', icon: '🏹' };
+  }
+  return { name: '', icon: '' };
+}
+
+function getSeason(date: Date, isArabic: boolean) {
+  const month = date.getMonth();
+  if (month === 11 || month === 0 || month === 1) {
+    return isArabic ? 'الشتاء' : 'Winter';
+  } else if (month === 2 || month === 3 || month === 4) {
+    return isArabic ? 'الربيع' : 'Spring';
+  } else if (month === 5 || month === 6 || month === 7) {
+    return isArabic ? 'الصيف' : 'Summer';
+  } else {
+    return isArabic ? 'الخريف' : 'Autumn';
+  }
+}
+
+function getMoonPhase(hijriDay: number, isArabic: boolean) {
+  if (hijriDay === 1 || hijriDay === 2) {
+    return { name: isArabic ? 'هلال جديد' : 'New Crescent (Hilal)', icon: '🌙', desc: isArabic ? 'بداية الشهر الهجري وولادة الهلال الجديد' : 'Beginning of the lunar month' };
+  } else if (hijriDay >= 3 && hijriDay <= 7) {
+    return { name: isArabic ? 'هلال متزايد' : 'Waxing Crescent', icon: '🌙', desc: isArabic ? 'يتحسن ظهور الهلال تدريجياً لزيادة الإشعاع والمساحة النورية' : 'Growing sliver of light' };
+  } else if (hijriDay === 8) {
+    return { name: isArabic ? 'تربيع أول' : 'First Quarter', icon: '🌗', desc: isArabic ? 'يتساوى فيه جزء القمر المظلم وجزءه المستنير بنسبة 50%' : 'Half of the moon is illuminated' };
+  } else if (hijriDay >= 9 && hijriDay <= 13) {
+    return { name: isArabic ? 'أحدب متزايد' : 'Waxing Gibbous', icon: '🌖', desc: isArabic ? 'يكتمل فيه معظم القمر عدا جزء يسير' : 'More than half is illuminated' };
+  } else if (hijriDay === 14 || hijriDay === 15) {
+    return { name: isArabic ? 'بدر كامل (الليالي البيض)' : 'Full Moon (Badr)', icon: '🌕', desc: isArabic ? 'اكتمال قرص القمر بنسبة 100% ليضيء السماء، وهي وسط الليالي البيض المباركة' : 'Fully illuminated moon disk' };
+  } else if (hijriDay >= 16 && hijriDay <= 20) {
+    return { name: isArabic ? 'أحدب متناقص' : 'Waning Gibbous', icon: '🌔', desc: isArabic ? 'يبدأ ضوء القمر بالتناقص تدريجياً' : 'Illumination starts decreasing' };
+  } else if (hijriDay === 21 || hijriDay === 22) {
+    return { name: isArabic ? 'تربيع أخير' : 'Third Quarter', icon: '🌓', desc: isArabic ? 'النصف الأيمن من القمر يصبح معتماً والنصف الأيسر مضيئاً' : 'Opposite half gets illuminated' };
+  } else if (hijriDay >= 23 && hijriDay <= 27) {
+    return { name: isArabic ? 'هلال متناقص' : 'Waning Crescent', icon: '🌘', desc: isArabic ? 'تضاؤل ضوء القمر ليصبح هلالاً دقيقاً نحيل الأطراف' : 'Sliver of light before disappearing' };
+  } else {
+    return { name: isArabic ? 'محاق' : 'New Moon / Dark Moon', icon: '🌑', desc: isArabic ? 'اختفاء ضوء القمر بالكامل استعداداً لانطلاق الشهر الجديد' : 'Complete darkness of lunar disk' };
+  }
+}
+
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
@@ -40,6 +122,8 @@ export default function App() {
   const [printOrientation, setPrintOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [printPaperSize, setPrintPaperSize] = useState<'A4' | 'A3' | 'Letter' | 'Legal'>('A4');
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [activePrintJob, setActivePrintJob] = useState<'calendar' | 'conversion'>('calendar');
+  const [showCopied, setShowCopied] = useState(false);
   
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventContent, setNewEventContent] = useState('');
@@ -203,24 +287,80 @@ export default function App() {
   const [convHijriD, setConvHijriD] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric' }).format(new Date())));
   const [convHijriM, setConvHijriM] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { month: 'numeric' }).format(new Date())));
   const [convHijriY, setConvHijriY] = useState<number>(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { year: 'numeric' }).format(new Date()).split(' ')[0]));
-  
-  const convertedDateStr = useMemo(() => {
-    if (convMode === 'g2h' && convGregDate) {
-      const d = new Date(convGregDate);
-      if (!isNaN(d.getTime())) {
+
+  const conversionDetails = useMemo(() => {
+    let targetGregDate: Date | null = null;
+    let targetHijriDateStr = '';
+    let dayOfWeekAr = '';
+    let dayOfWeekEn = '';
+    let targetHijriD = 1;
+
+    try {
+      if (convMode === 'g2h' && convGregDate) {
+        const d = new Date(convGregDate);
+        if (!isNaN(d.getTime())) {
+          targetGregDate = d;
+          const formatter = new Intl.DateTimeFormat(isAr ? 'ar-SA-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
+            day: 'numeric', month: 'long', year: 'numeric'
+          });
+          targetHijriDateStr = formatter.format(d);
+          
+          const dayFormatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric' });
+          targetHijriD = parseInt(dayFormatter.format(d)) || 1;
+        }
+      } else if (convMode === 'h2g') {
+        const m = moment(`${convHijriY}/${convHijriM}/${convHijriD}`, 'iYYYY/iM/iD');
+        if (m.isValid()) {
+          targetGregDate = m.toDate();
+          targetHijriD = convHijriD;
+        }
+      }
+    } catch (e) {
+      console.error("Error in date conversion calculation:", e);
+    }
+
+    if (targetGregDate && !isNaN(targetGregDate.getTime())) {
+      dayOfWeekAr = format(targetGregDate, 'EEEE', { locale: arSA });
+      dayOfWeekEn = format(targetGregDate, 'EEEE', { locale: enUS });
+      
+      const zodiac = getZodiacSign(targetGregDate, isAr);
+      const season = getSeason(targetGregDate, isAr);
+      const moon = getMoonPhase(targetHijriD, isAr);
+
+      const formattedGreg = format(targetGregDate, 'd MMMM yyyy', { locale: isAr ? arSA : enUS });
+      let formattedHijri = targetHijriDateStr;
+      if (convMode === 'h2g') {
         const formatter = new Intl.DateTimeFormat(isAr ? 'ar-SA-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
           day: 'numeric', month: 'long', year: 'numeric'
         });
-        return formatter.format(d);
+        formattedHijri = formatter.format(targetGregDate);
       }
-    } else if (convMode === 'h2g') {
-      const m = moment(`${convHijriY}/${convHijriM}/${convHijriD}`, 'iYYYY/iM/iD');
-      if (m.isValid()) {
-        return format(m.toDate(), 'd MMMM yyyy', { locale: isAr ? arSA : enUS });
-      }
+
+      return {
+        isValid: true,
+        gregorianDate: targetGregDate,
+        formattedGregorian: formattedGreg,
+        formattedHijri: formattedHijri,
+        dayOfWeek: isAr ? dayOfWeekAr : dayOfWeekEn,
+        zodiac,
+        season,
+        moon,
+        dayNumber: targetGregDate.getDate(),
+        monthNumber: targetGregDate.getMonth() + 1,
+        yearNumber: targetGregDate.getFullYear(),
+        hijriDay: targetHijriD
+      };
+    }
+
+    return { isValid: false };
+  }, [convMode, convGregDate, convHijriD, convHijriM, convHijriY, isAr]);
+
+  const convertedDateStr = useMemo(() => {
+    if (conversionDetails.isValid) {
+      return convMode === 'g2h' ? conversionDetails.formattedHijri : conversionDetails.formattedGregorian;
     }
     return null;
-  }, [convMode, convGregDate, convHijriD, convHijriM, convHijriY, isAr]);
+  }, [conversionDetails, convMode]);
   
   const prayerTimes = useMemo(() => {
     const city = GCC_CITIES.find(c => c.id === appSettings.cityId) || GCC_CITIES[0];
@@ -574,18 +714,23 @@ export default function App() {
             </div>
 
             {/* Date Converter Card */}
-            <div className="relative overflow-hidden rounded-[2rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-8 flex flex-col gap-6 shadow-xl">
-              <div className="flex items-center justify-between">
+            <div id="date-converter-card" className="relative overflow-hidden rounded-[2rem] bg-[#09090b] border border-zinc-800/60 p-6 lg:p-8 flex flex-col gap-6 shadow-xl">
+              <div className="flex bg-gradient-to-r from-emerald-500/10 to-transparent p-1.5 -mx-6 -mt-6 lg:-mx-8 lg:-mt-8 px-6 lg:px-8 py-4 border-b border-zinc-850 justify-between items-center sm:flex-row flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="m15 4 3 3-3 3"/></svg>
                   </div>
-                  <h3 className="text-lg font-medium tracking-wide text-zinc-100">
-                    {isAr ? 'تحويل التاريخ' : 'Date Converter'}
-                  </h3>
+                  <div>
+                    <h3 className="text-base font-medium text-zinc-100">
+                      {isAr ? 'محول التاريخ المتطور' : 'Advanced Date Converter'}
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 font-light mt-0.5">
+                      {isAr ? 'التحويل الدقيق والبيانات الفلكية' : 'Accurate Conversion & Lunar Data'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex bg-zinc-900/80 border border-zinc-800/80 rounded-xl overflow-hidden p-1 backdrop-blur-sm">
+                <div className="flex bg-zinc-950/85 border border-zinc-850 rounded-xl p-0.5 shrink-0">
                   <button
                     onClick={() => setConvMode('g2h')}
                     className={cn(
@@ -593,7 +738,7 @@ export default function App() {
                       convMode === 'g2h' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                     )}
                   >
-                    {isAr ? 'للهجري' : 'To Hijri'}
+                    {isAr ? 'ميلادي للهجري' : 'G to H'}
                   </button>
                   <button
                     onClick={() => setConvMode('h2g')}
@@ -602,55 +747,234 @@ export default function App() {
                       convMode === 'h2g' ? "bg-zinc-800 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                     )}
                   >
-                    {isAr ? 'للميلادي' : 'To Gregorian'}
+                    {isAr ? 'هجري للميلادي' : 'H to G'}
                   </button>
                 </div>
               </div>
 
               {convMode === 'g2h' ? (
-                <div className="flex gap-3 items-center">
-                  <input 
-                    type="date" 
-                    value={convGregDate} 
-                    onChange={(e) => setConvGregDate(e.target.value)}
-                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-4 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
-                  />
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                    {isAr ? 'اختر التاريخ الميلادي' : 'Select Gregorian Date'}
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => {
+                        const d = new Date(convGregDate);
+                        d.setDate(d.getDate() - 1);
+                        setConvGregDate(format(d, 'yyyy-MM-dd'));
+                      }}
+                      className="p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800/80 transition-all text-zinc-400 hover:text-zinc-100 shrink-0"
+                      title={isAr ? 'اليوم السابق' : 'Previous Day'}
+                    >
+                      {isAr ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                    </button>
+                    <input 
+                      type="date" 
+                      value={convGregDate} 
+                      onChange={(e) => setConvGregDate(e.target.value)}
+                      className="flex-1 bg-zinc-900/40 border border-zinc-850 rounded-2xl px-4 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm text-center"
+                    />
+                    <button
+                      onClick={() => {
+                        const d = new Date(convGregDate);
+                        d.setDate(d.getDate() + 1);
+                        setConvGregDate(format(d, 'yyyy-MM-dd'));
+                      }}
+                      className="p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800/80 transition-all text-zinc-400 hover:text-zinc-100 shrink-0"
+                      title={isAr ? 'اليوم التالي' : 'Next Day'}
+                    >
+                      {isAr ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => setConvGregDate(format(new Date(), 'yyyy-MM-dd'))}
+                      className="px-3 h-[48px] rounded-xl bg-zinc-900/40 hover:bg-zinc-800 border border-zinc-850 transition-all text-zinc-400 hover:text-zinc-100 text-xs shrink-0 font-medium"
+                    >
+                      {isAr ? 'اليوم' : 'Today'}
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex gap-2">
-                  <input 
-                    type="number" 
-                    value={convHijriD || ''}
-                    onChange={(e) => setConvHijriD(Math.min(30, Math.max(1, parseInt(e.target.value) || 1)))}
-                    placeholder={isAr ? 'يوم' : 'DD'}
-                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
-                  />
-                  <input 
-                    type="number" 
-                    value={convHijriM || ''}
-                    onChange={(e) => setConvHijriM(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))}
-                    placeholder={isAr ? 'شهر' : 'MM'}
-                    className="flex-1 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
-                  />
-                  <input 
-                    type="number" 
-                    value={convHijriY || ''}
-                    onChange={(e) => setConvHijriY(Math.min(9999, Math.max(1, parseInt(e.target.value) || 1)))}
-                    placeholder={isAr ? 'سنة' : 'YYYY'}
-                    className="w-20 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-sm"
-                  />
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                      {isAr ? 'أدخل التاريخ الهجري بدقة' : 'Enter Accurate Hijri Date'}
+                    </label>
+                    <button
+                      onClick={() => {
+                        const today = new Date();
+                        setConvHijriD(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric' }).format(today)));
+                        setConvHijriM(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { month: 'numeric' }).format(today)));
+                        setConvHijriY(Number(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { year: 'numeric' }).format(today).split(' ')[0]));
+                      }}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                    >
+                      {isAr ? 'تعيين لتاريخ اليوم الهجري' : 'Reset to Today Hijri'}
+                    </button>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {/* Day Select */}
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                      <select 
+                        value={convHijriD}
+                        onChange={(e) => setConvHijriD(parseInt(e.target.value))}
+                        className="bg-zinc-900/40 border border-zinc-850 rounded-2xl px-2 text-center text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-xs sm:text-sm"
+                      >
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
+                          <option key={`hday-${d}`} value={d} className="bg-zinc-950 text-zinc-100">{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Month Select */}
+                    <div className="flex-[2.5] flex flex-col gap-1 min-w-0">
+                      <select 
+                        value={convHijriM}
+                        onChange={(e) => setConvHijriM(parseInt(e.target.value))}
+                        className="bg-zinc-900/40 border border-zinc-850 rounded-2xl px-3 text-zinc-200 focus:border-indigo-500/50 outline-none transition-all cursor-pointer h-[48px] text-xs sm:text-sm text-start"
+                      >
+                        {HIJRI_MONTH_OPTIONS.map(opt => (
+                          <option key={`hmopt-${opt.value}`} value={opt.value} className="bg-zinc-950 text-zinc-100">
+                            {opt.value} - {isAr ? opt.nameAr : opt.nameEn}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Year Input */}
+                    <div className="flex-[1.5] flex gap-1 h-[48px] items-center bg-zinc-900/40 border border-zinc-850 rounded-2xl px-2 min-w-0">
+                      <input 
+                        type="number" 
+                        value={convHijriY || ''}
+                        onChange={(e) => setConvHijriY(Math.min(9999, Math.max(1, parseInt(e.target.value) || 1)))}
+                        placeholder="1447"
+                        className="w-full bg-transparent text-center text-zinc-200 focus:outline-none text-xs sm:text-sm font-secondary"
+                      />
+                      <div className="flex flex-col gap-1 text-[8px] text-zinc-500 shrink-0">
+                        <button onClick={() => setConvHijriY(prev => prev + 1)} className="hover:text-white">▲</button>
+                        <button onClick={() => setConvHijriY(prev => Math.max(1, prev - 1))} className="hover:text-white">▼</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <div className="bg-gradient-to-r from-zinc-900/40 to-zinc-900/20 border border-zinc-800/50 rounded-2xl p-5 text-center flex flex-col justify-center items-center min-h-[72px] mt-1 relative overflow-hidden group">
-                {/* Subtle highlight */}
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                {convertedDateStr ? (
-                  <div className="text-xl sm:text-2xl font-light text-zinc-100 tracking-tight font-secondary z-10">{convertedDateStr}</div>
+              {/* Conversion Result Card */}
+              <div className="bg-gradient-to-r from-zinc-900/40 to-zinc-900/20 border border-zinc-800/50 rounded-2xl p-5 text-center flex flex-col justify-center items-center min-h-[84px] mt-1 relative overflow-hidden group font-secondary">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                
+                {conversionDetails.isValid ? (
+                  <div className="space-y-2 z-10 w-full">
+                    {/* Day Name header */}
+                    <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
+                      {isAr ? `يوم ${conversionDetails.dayOfWeek}` : conversionDetails.dayOfWeek}
+                    </div>
+                    {/* Main conversion text */}
+                    <div className="text-lg sm:text-xl font-light text-zinc-100 tracking-tight leading-normal">
+                      {convMode === 'g2h' ? conversionDetails.formattedHijri : conversionDetails.formattedGregorian}
+                    </div>
+                    {/* Secondary detailed string */}
+                    <div className="text-[11px] text-zinc-500 font-light">
+                      {convMode === 'g2h' 
+                        ? `${isAr ? 'يقابله بالميلادي' : 'Corresponding Gregorian'}: ${conversionDetails.formattedGregorian}` 
+                        : `${isAr ? 'يقابله بالهجري' : 'Corresponding Hijri'}: ${conversionDetails.formattedHijri}`
+                      }
+                    </div>
+                  </div>
                 ) : (
-                  <div className="text-sm text-zinc-500 font-light z-10">{isAr ? 'أدخل تاريخاً صحيحاً' : 'Enter a valid date'}</div>
+                  <div className="text-sm text-zinc-500 font-light z-10">{isAr ? 'أدخل تاريخاً صحيحاً للتحويل' : 'Enter a valid date to convert'}</div>
                 )}
               </div>
+
+              {/* Advanced Astro & Moon Phase Details (Daqiq & Amm updates!) */}
+              {conversionDetails.isValid && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Zodiac */}
+                    <div className="p-3 bg-zinc-900/30 border border-zinc-850 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 hover:bg-zinc-800/40 hover:border-zinc-800 transition-all duration-350">
+                      <span className="text-lg leading-none">{conversionDetails.zodiac?.icon}</span>
+                      <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{isAr ? 'البرج الفلكي' : 'Zodiac'}</span>
+                      <span className="text-xs font-semibold text-zinc-300 truncate w-full px-1">{conversionDetails.zodiac?.name}</span>
+                    </div>
+
+                    {/* Season */}
+                    <div className="p-3 bg-zinc-900/30 border border-zinc-850 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 hover:bg-zinc-800/40 hover:border-zinc-800 transition-all duration-350">
+                      <span className="text-lg leading-none">🍂</span>
+                      <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{isAr ? 'فصل السنة' : 'Season'}</span>
+                      <span className="text-xs font-semibold text-zinc-300 truncate w-full px-1">{conversionDetails.season}</span>
+                    </div>
+
+                    {/* Moon Phase */}
+                    <div className="p-3 bg-zinc-900/30 border border-zinc-850 rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 hover:bg-zinc-800/40 hover:border-zinc-800 transition-all duration-350" title={conversionDetails.moon?.desc}>
+                      <span className="text-lg leading-none">{conversionDetails.moon?.icon}</span>
+                      <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{isAr ? 'طور القمر' : 'Moon Phase'}</span>
+                      <span className="text-xs font-semibold text-zinc-300 truncate w-full px-1">{conversionDetails.moon?.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Moon phase translation description quote */}
+                  <div className="text-[10px] text-zinc-500 italic text-center leading-relaxed bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-900">
+                    {conversionDetails.moon?.desc}
+                  </div>
+
+                  {/* Action row with Clipboard & Printer (Daqiq) */}
+                  <div className="flex gap-2 justify-center pt-1">
+                    <button
+                      onClick={() => {
+                        if (conversionDetails.isValid) {
+                          const text = isAr 
+                            ? `التقويم العام - تحويل التاريخ:\n- التاريخ الميلادي: ${conversionDetails.formattedGregorian} (${conversionDetails.dayOfWeek})\n- التاريخ الهجري: ${conversionDetails.formattedHijri}\n- البرج الفلكي: ${conversionDetails.zodiac?.name}\n- فصل السنة: ${conversionDetails.season}\n- طور القمر: ${conversionDetails.moon?.name}`
+                            : `General Calendar - Date Conversion:\n- Gregorian: ${conversionDetails.formattedGregorian} (${conversionDetails.dayOfWeek})\n- Hijri: ${conversionDetails.formattedHijri}\n- Zodiac Sign: ${conversionDetails.zodiac?.name}\n- Season: ${conversionDetails.season}\n- Moon Phase: ${conversionDetails.moon?.name}`;
+                          navigator.clipboard.writeText(text);
+                          setShowCopied(true);
+                          setTimeout(() => setShowCopied(false), 2000);
+                        }
+                      }}
+                      className="flex-1 py-2.5 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800 hover:text-white rounded-xl text-xs text-zinc-300 transition-all flex items-center justify-center gap-2 active:scale-95 relative overflow-hidden"
+                    >
+                      <AnimatePresence mode="wait">
+                        {showCopied ? (
+                          <motion.span 
+                            key="copied-txt"
+                            initial={{ y: 5, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: -5, opacity: 0 }}
+                            className="text-emerald-400 font-medium"
+                          >
+                            {isAr ? '✓ تم النسخ!' : '✓ Copied!'}
+                          </motion.span>
+                        ) : (
+                          <motion.div 
+                            key="copy-layout"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-2"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            <span>{isAr ? 'نسخ التفاصيل' : 'Copy Details'}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActivePrintJob('conversion');
+                        setTimeout(() => {
+                          window.print();
+                          setActivePrintJob('calendar');
+                        }, 200);
+                      }}
+                      className="flex-1 py-2.5 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 rounded-xl text-xs text-indigo-400 transition-all flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'طباعة وثيقة التحويل' : 'Print Certificate'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1871,253 +2195,419 @@ export default function App() {
       </div>
 
       {/* Print View */}
-      <div className={cn(
-        "hidden print:flex w-full h-[100vh] flex-col p-4 sm:p-8 print:p-8",
-        printDesign === 'original' ? "bg-[#020202] text-zinc-100" : 
-        printDesign === 'custom' ? "bg-[#f8fafc] text-slate-900" : 
-        printDesign === 'modern' ? "bg-white text-zinc-900 modern-bg" : "bg-white text-black"
-      )} dir={isAr ? 'rtl' : 'ltr'}>
-        <style type="text/css" media="print">
-          {`
-            @page { size: ${printPaperSize} ${printOrientation}; margin: 0; }
-            body { 
-              -webkit-print-color-adjust: exact; 
-              print-color-adjust: exact; 
-              background: ${printDesign === 'original' ? '#020202' : printDesign === 'custom' ? '#f8fafc' : 'white'} !important; 
-              margin: 0;
-              padding: 0;
-              font-family: ${isAr ? '"Thmanyah Sans", "IBM Plex Sans Arabic", sans-serif' : 'system-ui, sans-serif'};
-            }
-            ::-webkit-scrollbar { display: none; }
-            .print-container {
-              width: 100%;
-              height: 100vh;
-              overflow: hidden;
-            }
-            .modern-bg {
-              background-image: radial-gradient(#e5e7eb 0.5px, transparent 0.5px);
-              background-size: 10px 10px;
-            }
-          `}
-        </style>
-        
-        {/* Header - Redesigned */}
+      {activePrintJob === 'calendar' && (
         <div className={cn(
-          "flex items-end justify-between mb-6 shrink-0 pb-6 border-b-2",
-          printDesign === 'original' ? "border-zinc-800" : 
-          printDesign === 'custom' ? "border-slate-200" : 
-          printDesign === 'modern' ? "border-zinc-100" : "border-black"
-        )}>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
+          "hidden print:flex w-full h-[100vh] flex-col p-4 sm:p-8 print:p-8",
+          printDesign === 'original' ? "bg-[#020202] text-zinc-100" : 
+          printDesign === 'custom' ? "bg-[#f8fafc] text-slate-900" : 
+          printDesign === 'modern' ? "bg-white text-zinc-900 modern-bg" : "bg-white text-black"
+        )} dir={isAr ? 'rtl' : 'ltr'}>
+          <style type="text/css" media="print">
+            {`
+              @page { size: ${printPaperSize} ${printOrientation}; margin: 0; }
+              body { 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+                background: ${printDesign === 'original' ? '#020202' : printDesign === 'custom' ? '#f8fafc' : 'white'} !important; 
+                margin: 0;
+                padding: 0;
+                font-family: ${isAr ? '"IBM Plex Sans Arabic", "Thmanyah Sans", sans-serif' : 'system-ui, sans-serif'};
+              }
+              ::-webkit-scrollbar { display: none; }
+              .print-container {
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+              }
+              .modern-bg {
+                background-image: radial-gradient(#e5e7eb 0.5px, transparent 0.5px);
+                background-size: 10px 10px;
+              }
+            `}
+          </style>
+          
+          {/* Header - Redesigned */}
+          <div className={cn(
+            "flex items-end justify-between mb-6 shrink-0 pb-6 border-b-2",
+            printDesign === 'original' ? "border-zinc-800" : 
+            printDesign === 'custom' ? "border-slate-200" : 
+            printDesign === 'modern' ? "border-zinc-100" : "border-black"
+          )}>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center",
+                  printDesign === 'original' ? "bg-indigo-500/20 text-indigo-400" : 
+                  printDesign === 'modern' ? "bg-zinc-900 text-white" : "bg-indigo-600 text-white"
+                )}>
+                  <CalendarIcon className="w-6 h-6" />
+                </div>
+                <h1 className={cn(
+                  "text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight leading-none",
+                  printDesign === 'original' ? "text-zinc-100" : 
+                  printDesign === 'modern' ? "text-zinc-900 font-bold" : "text-slate-900",
+                  printDesign === 'general' && "font-bold text-black"
+                )}>
+                  {isAr ? 'التقويم السنوي' : 'Annual Calendar'}
+                </h1>
+              </div>
+              <p className={cn(
+                "text-sm sm:text-base lg:text-xl font-bold uppercase leading-none opacity-60 ps-16",
+                !isAr && "tracking-[0.3em]",
+                printDesign === 'original' ? "text-zinc-400" : 
+                printDesign === 'modern' ? cn("text-zinc-500", !isAr && "tracking-[0.1em]") : "text-slate-500",
+                printDesign === 'general' && "text-black opacity-100"
+              )}>
+                {isAr ? 'الدراسي والرواتب' : 'Academic & Salaries'} • {format(currentMonth, 'yyyy')} {isAr ? 'م' : 'CE'}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-end gap-4">
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-4 h-4 rounded-full",
+                    printDesign === 'original' ? "bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)]" : 
+                    printDesign === 'custom' ? "bg-emerald-500" : 
+                    printDesign === 'modern' ? "bg-emerald-500" : "bg-black"
+                  )} />
+                  <span className={cn(
+                    "text-xs sm:text-sm font-bold uppercase",
+                    !isAr && "tracking-widest",
+                    printDesign === 'original' ? "text-zinc-400" : 
+                    printDesign === 'modern' ? "text-zinc-600" : "text-slate-600",
+                    printDesign === 'general' && "font-bold text-black"
+                  )}>{isAr ? 'الرواتب' : 'Salaries'}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-4 h-4 rounded-full",
+                    printDesign === 'original' ? "bg-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.6)]" : 
+                    printDesign === 'custom' ? "bg-indigo-500" : 
+                    printDesign === 'modern' ? "bg-indigo-500" : "bg-black"
+                  )} />
+                  <span className={cn(
+                    "text-xs sm:text-sm font-bold uppercase",
+                    !isAr && "tracking-widest",
+                    printDesign === 'original' ? "text-zinc-400" : 
+                    printDesign === 'modern' ? "text-zinc-600" : "text-slate-600",
+                    printDesign === 'general' && "font-bold text-black"
+                  )}>{isAr ? 'التقويم الدراسي' : 'Academic'}</span>
+                </div>
+              </div>
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center",
-                printDesign === 'original' ? "bg-indigo-500/20 text-indigo-400" : 
-                printDesign === 'modern' ? "bg-zinc-900 text-white" : "bg-indigo-600 text-white"
+                "text-[8px] sm:text-[10px] font-mono opacity-40 uppercase",
+                !isAr && "tracking-widest",
+                printDesign === 'original' ? "text-zinc-500" : 
+                printDesign === 'modern' ? "text-zinc-400" : "text-slate-400"
               )}>
-                <CalendarIcon className="w-6 h-6" />
+                {GCC_CITIES.find(c => c.id === appSettings.cityId)?.[isAr ? 'nameAr' : 'nameEn']} • {format(new Date(), 'yyyy/MM/dd HH:mm')}
               </div>
-              <h1 className={cn(
-                "text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight leading-none",
-                printDesign === 'original' ? "text-zinc-100" : 
-                printDesign === 'modern' ? "text-zinc-900 font-bold" : "text-slate-900",
-                printDesign === 'general' && "font-bold text-black"
-              )}>
-                {isAr ? 'التقويم السنوي' : 'Annual Calendar'}
-              </h1>
             </div>
-            <p className={cn(
-              "text-sm sm:text-base lg:text-xl font-bold uppercase leading-none opacity-60 ps-16",
-              !isAr && "tracking-[0.3em]",
-              printDesign === 'original' ? "text-zinc-400" : 
-              printDesign === 'modern' ? cn("text-zinc-500", !isAr && "tracking-[0.1em]") : "text-slate-500",
-              printDesign === 'general' && "text-black opacity-100"
-            )}>
-              {isAr ? 'الدراسي والرواتب' : 'Academic & Salaries'} • {format(currentMonth, 'yyyy')} {isAr ? 'م' : 'CE'}
-            </p>
           </div>
 
-          <div className="flex flex-col items-end gap-4">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-4 h-4 rounded-full",
-                  printDesign === 'original' ? "bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)]" : 
-                  printDesign === 'custom' ? "bg-emerald-500" : 
-                  printDesign === 'modern' ? "bg-emerald-500" : "bg-black"
-                )} />
-                <span className={cn(
-                  "text-xs sm:text-sm font-bold uppercase",
-                  !isAr && "tracking-widest",
-                  printDesign === 'original' ? "text-zinc-400" : 
-                  printDesign === 'modern' ? "text-zinc-600" : "text-slate-600",
-                  printDesign === 'general' && "font-bold text-black"
-                )}>{isAr ? 'الرواتب' : 'Salaries'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-4 h-4 rounded-full",
-                  printDesign === 'original' ? "bg-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.6)]" : 
-                  printDesign === 'custom' ? "bg-indigo-500" : 
-                  printDesign === 'modern' ? "bg-indigo-500" : "bg-black"
-                )} />
-                <span className={cn(
-                  "text-xs sm:text-sm font-bold uppercase",
-                  !isAr && "tracking-widest",
-                  printDesign === 'original' ? "text-zinc-400" : 
-                  printDesign === 'modern' ? "text-zinc-600" : "text-slate-600",
-                  printDesign === 'general' && "font-bold text-black"
-                )}>{isAr ? 'التقويم الدراسي' : 'Academic'}</span>
-              </div>
-            </div>
-            <div className={cn(
-              "text-[8px] sm:text-[10px] font-mono opacity-40 uppercase",
-              !isAr && "tracking-widest",
-              printDesign === 'original' ? "text-zinc-500" : 
-              printDesign === 'modern' ? "text-zinc-400" : "text-slate-400"
-            )}>
-              {GCC_CITIES.find(c => c.id === appSettings.cityId)?.[isAr ? 'nameAr' : 'nameEn']} • {format(new Date(), 'yyyy/MM/dd HH:mm')}
-            </div>
-          </div>
-        </div>
+          {/* Grid - Redesigned with better spacing and typography */}
+          <div className={cn(
+            "flex-1 grid gap-2 sm:gap-4 min-h-0",
+            printDuration === '6months' 
+              ? (printOrientation === 'landscape' ? "grid-cols-2 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-2" : "grid-cols-2 lg:grid-cols-2 print:grid-cols-2 print:grid-rows-3")
+              : (printOrientation === 'landscape' ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 print:grid-rows-3" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-4")
+          )}>
+            {Array.from({ length: printDuration === '6months' ? 6 : 12 }).map((_, i) => {
+              const monthDate = addMonths(startOfYear(currentMonth), i);
+              const monthDays = eachDayOfInterval({ start: startOfMonth(monthDate), end: endOfMonth(monthDate) });
+              const firstDay = monthDays[0].getDay();
+              const padding = Array.from({ length: firstDay });
+              const endPaddingLength = 42 - (padding.length + monthDays.length);
+              const endPadding = Array.from({ length: endPaddingLength });
 
-        {/* Grid - Redesigned with better spacing and typography */}
-        <div className={cn(
-          "flex-1 grid gap-2 sm:gap-4 min-h-0",
-          printDuration === '6months' 
-            ? (printOrientation === 'landscape' ? "grid-cols-2 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-2" : "grid-cols-2 lg:grid-cols-2 print:grid-cols-2 print:grid-rows-3")
-            : (printOrientation === 'landscape' ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 print:grid-cols-4 print:grid-rows-3" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-3 print:grid-cols-3 print:grid-rows-4")
-        )}>
-          {Array.from({ length: printDuration === '6months' ? 6 : 12 }).map((_, i) => {
-            const monthDate = addMonths(startOfYear(currentMonth), i);
-            const monthDays = eachDayOfInterval({ start: startOfMonth(monthDate), end: endOfMonth(monthDate) });
-            const firstDay = monthDays[0].getDay();
-            const padding = Array.from({ length: firstDay });
-            const endPaddingLength = 42 - (padding.length + monthDays.length);
-            const endPadding = Array.from({ length: endPaddingLength });
-
-            return (
-              <div key={i} className={cn(
-                "flex flex-col h-full rounded-2xl border-2 transition-all",
-                printDesign === 'original' ? "bg-zinc-900/10 border-zinc-800/30" :
-                printDesign === 'custom' ? "bg-white border-indigo-100 shadow-xl shadow-indigo-100/50" : 
-                printDesign === 'modern' ? "bg-white border-zinc-100 shadow-sm" :
-                "bg-white border-black rounded-none"
-              )}>
-                <div className={cn(
-                  "text-center py-2 sm:py-3 text-sm sm:text-base font-bold shrink-0 uppercase",
-                  !isAr && "tracking-[0.2em]",
-                  printDesign === 'original' ? "bg-zinc-800/20 text-zinc-100" :
-                  printDesign === 'custom' ? "bg-indigo-50/50 text-indigo-900 border-b border-indigo-100" : 
-                  printDesign === 'modern' ? "bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 text-white border-b border-zinc-700 shadow-sm" :
-                  "bg-white text-black border-b-2 border-black"
+              return (
+                <div key={i} className={cn(
+                  "flex flex-col h-full rounded-2xl border-2 transition-all",
+                  printDesign === 'original' ? "bg-zinc-900/10 border-zinc-800/30" :
+                  printDesign === 'custom' ? "bg-white border-indigo-100 shadow-xl shadow-indigo-100/50" : 
+                  printDesign === 'modern' ? "bg-white border-zinc-100 shadow-sm" :
+                  "bg-white border-black rounded-none"
                 )}>
-                  {format(monthDate, 'MMMM', { locale: isAr ? arSA : enUS })}
-                </div>
-                <div className={cn(
-                  "grid grid-cols-7 text-center text-[6px] sm:text-[8px] font-bold uppercase shrink-0 py-1 sm:py-2 opacity-30",
-                  !isAr && "tracking-[0.2em]",
-                  printDesign === 'original' ? "text-zinc-400" :
-                  printDesign === 'custom' ? "text-slate-500" : 
-                  printDesign === 'modern' ? cn("text-zinc-500 opacity-60", !isAr && "tracking-[0.1em]") :
-                  "text-black border-b border-black opacity-100"
-                )}>
-                  {weekDays.map(d => <div key={d}>{d}</div>)}
-                </div>
-                <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-0 w-full">
-                  {padding.map((_, j) => <div key={`pad-${j}`} className={cn(
-                    "border-t min-w-0",
-                    isAr ? "border-l" : "border-r",
-                    printDesign === 'original' ? "border-zinc-800/10" :
-                    printDesign === 'custom' ? "border-slate-50" : 
-                    printDesign === 'modern' ? "border-zinc-50" : "border-black"
-                  )} />)}
-                  {monthDays.map((day, j) => {
-                    const dayStr = format(day, 'yyyy-MM-dd');
-                    const hasAca = academicEvents.some(e => e.date === dayStr);
-                    const hasSal = salaryDates.some(e => e.date === dayStr);
-                    return (
-                      <div key={j} className={cn(
-                        "border-t p-1 sm:p-2 flex flex-col items-center justify-center relative group min-w-0",
-                        isAr ? "border-l" : "border-r",
-                        printDesign === 'original' ? "border-zinc-800/10" :
-                        printDesign === 'custom' ? "border-slate-50" : 
-                        printDesign === 'modern' ? "border-zinc-50" : "border-black"
-                      )}>
-                        <div className={cn(
-                          "flex flex-col items-center z-10",
-                          printDateType === 'both' ? "gap-0.5" : "gap-0"
+                  <div className={cn(
+                    "text-center py-2 sm:py-3 text-sm sm:text-base font-bold shrink-0 uppercase",
+                    !isAr && "tracking-[0.2em]",
+                    printDesign === 'original' ? "bg-zinc-800/20 text-zinc-100" :
+                    printDesign === 'custom' ? "bg-indigo-50/50 text-indigo-900 border-b border-indigo-100" : 
+                    printDesign === 'modern' ? "bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 text-white border-b border-zinc-700 shadow-sm" :
+                    "bg-white text-black border-b-2 border-black"
+                  )}>
+                    {format(monthDate, 'MMMM', { locale: isAr ? arSA : enUS })}
+                  </div>
+                  <div className={cn(
+                    "grid grid-cols-7 text-center text-[6px] sm:text-[8px] font-bold uppercase shrink-0 py-1 sm:py-2 opacity-30",
+                    !isAr && "tracking-[0.2em]",
+                    printDesign === 'original' ? "text-zinc-400" :
+                    printDesign === 'custom' ? "text-slate-500" : 
+                    printDesign === 'modern' ? cn("text-zinc-500 opacity-60", !isAr && "tracking-[0.1em]") :
+                    "text-black border-b border-black opacity-100"
+                  )}>
+                    {weekDays.map(d => <div key={d}>{d}</div>)}
+                  </div>
+                  <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-0 w-full">
+                    {padding.map((_, j) => <div key={`pad-${j}`} className={cn(
+                      "border-t min-w-0",
+                      isAr ? "border-l" : "border-r",
+                      printDesign === 'original' ? "border-zinc-800/10" :
+                      printDesign === 'custom' ? "border-slate-50" : 
+                      printDesign === 'modern' ? "border-zinc-50" : "border-black"
+                    )} />)}
+                    {monthDays.map((day, j) => {
+                      const dayStr = format(day, 'yyyy-MM-dd');
+                      const hasAca = academicEvents.some(e => e.date === dayStr);
+                      const hasSal = salaryDates.some(e => e.date === dayStr);
+                      return (
+                        <div key={j} className={cn(
+                          "border-t p-1 sm:p-2 flex flex-col items-center justify-center relative group min-w-0",
+                          isAr ? "border-l" : "border-r",
+                          printDesign === 'original' ? "border-zinc-800/10" :
+                          printDesign === 'custom' ? "border-slate-50" : 
+                          printDesign === 'modern' ? "border-zinc-50" : "border-black"
                         )}>
-                          {(printDateType === 'both' || printDateType === 'gregorian') && (
-                            <span className={cn(
-                              "font-bold leading-none",
-                              printDateType === 'gregorian' ? "text-lg print:text-xl" : "text-[11px] print:text-[12px]",
-                              printDesign === 'original' ? "text-zinc-100" :
-                              printDesign === 'custom' ? "text-slate-900" : 
-                              printDesign === 'modern' ? "text-zinc-900" : "text-black"
-                            )}>{format(day, 'd')}</span>
-                          )}
-                          {(printDateType === 'both' || printDateType === 'hijri') && (
-                            <span className={cn(
-                              "font-bold leading-none font-secondary",
-                              printDateType === 'hijri' ? "text-lg print:text-xl opacity-100" : "text-[8px] print:text-[10px] opacity-40",
-                              printDesign === 'original' ? "text-zinc-400" :
-                              printDesign === 'custom' ? "text-slate-500" : 
-                              printDesign === 'modern' ? "text-zinc-500" : "text-black opacity-100"
-                            )}>{getHijriDay(day)}</span>
-                          )}
+                          <div className={cn(
+                            "flex flex-col items-center z-10",
+                            printDateType === 'both' ? "gap-0.5" : "gap-0"
+                          )}>
+                            {(printDateType === 'both' || printDateType === 'gregorian') && (
+                              <span className={cn(
+                                "font-bold leading-none",
+                                printDateType === 'gregorian' ? "text-lg print:text-xl" : "text-[11px] print:text-[12px]",
+                                printDesign === 'original' ? "text-zinc-100" :
+                                printDesign === 'custom' ? "text-slate-900" : 
+                                printDesign === 'modern' ? "text-zinc-900" : "text-black"
+                              )}>{format(day, 'd')}</span>
+                            )}
+                            {(printDateType === 'both' || printDateType === 'hijri') && (
+                              <span className={cn(
+                                "font-bold leading-none font-secondary",
+                                printDateType === 'hijri' ? "text-lg print:text-xl opacity-100" : "text-[8px] print:text-[10px] opacity-40",
+                                printDesign === 'original' ? "text-zinc-400" :
+                                printDesign === 'custom' ? "text-slate-500" : 
+                                printDesign === 'modern' ? "text-zinc-500" : "text-black opacity-100"
+                              )}>{getHijriDay(day)}</span>
+                            )}
+                          </div>
+                          
+                          <div className="absolute bottom-1 flex gap-1">
+                            {hasSal && <div className={cn(
+                              "w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", 
+                              printDesign === 'original' ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" : 
+                              printDesign === 'custom' ? "bg-emerald-500" : 
+                              printDesign === 'modern' ? "bg-emerald-500" : "bg-black"
+                            )} />}
+                            {hasAca && <div className={cn(
+                              "w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", 
+                              printDesign === 'original' ? "bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.8)]" : 
+                              printDesign === 'custom' ? "bg-indigo-500" : 
+                              printDesign === 'modern' ? "bg-indigo-500" : "bg-black"
+                            )} />}
+                          </div>
                         </div>
-                        
-                        <div className="absolute bottom-1 flex gap-1">
-                          {hasSal && <div className={cn(
-                            "w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", 
-                            printDesign === 'original' ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" : 
-                            printDesign === 'custom' ? "bg-emerald-500" : 
-                            printDesign === 'modern' ? "bg-emerald-500" : "bg-black"
-                          )} />}
-                          {hasAca && <div className={cn(
-                            "w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full", 
-                            printDesign === 'original' ? "bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.8)]" : 
-                            printDesign === 'custom' ? "bg-indigo-500" : 
-                            printDesign === 'modern' ? "bg-indigo-500" : "bg-black"
-                          )} />}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {endPadding.map((_, j) => <div key={`endpad-${j}`} className={cn(
-                    "border-t min-w-0",
-                    isAr ? "border-l" : "border-r",
-                    printDesign === 'original' ? "border-zinc-800/10" :
-                    printDesign === 'custom' ? "border-slate-50" : 
-                    printDesign === 'modern' ? "border-zinc-50" : "border-black"
-                  )} />)}
+                      )
+                    })}
+                    {endPadding.map((_, j) => <div key={`endpad-${j}`} className={cn(
+                      "border-t min-w-0",
+                      isAr ? "border-l" : "border-r",
+                      printDesign === 'original' ? "border-zinc-800/10" :
+                      printDesign === 'custom' ? "border-slate-50" : 
+                      printDesign === 'modern' ? "border-zinc-50" : "border-black"
+                    )} />)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Footer - Redesigned */}
+          <div className={cn(
+            "shrink-0 mt-6 text-[9px] font-bold uppercase flex items-center justify-between px-8 opacity-30",
+            !isAr && "tracking-[0.4em]",
+            printDesign === 'original' ? "text-zinc-500" : 
+            printDesign === 'modern' ? cn("text-zinc-400", !isAr && "tracking-[0.1em]") : "text-slate-400",
+            printDesign === 'general' && "text-black opacity-100"
+          )}>
+            <div className="flex items-center gap-4">
+              <span>{isAr ? 'التقويم العام' : 'General Calendar'}</span>
+              <div className="w-1 h-1 rounded-full bg-current" />
+              <span>{isAr ? 'بواسطة التقويم الدراسي والرواتب' : 'By Academic & Salary Calendar'}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span>{format(new Date(), 'yyyy')}</span>
+              <div className="w-1 h-1 rounded-full bg-current" />
+              <span>{isAr ? 'جميع الحقوق محفوظة' : 'All Rights Reserved'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print View - Date Conversion Certificate */}
+      {activePrintJob === 'conversion' && conversionDetails.isValid && (
+        <div className="hidden print:flex w-full h-[100vh] flex-col justify-between p-12 bg-white text-zinc-950 mx-auto select-none box-border relative" dir={isAr ? 'rtl' : 'ltr'}>
+          <style type="text/css" media="print">
+            {`
+              @page { size: A4 portrait; margin: 12mm; }
+              body { 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+                background: white !important; 
+                color: #09090b !important;
+                margin: 0;
+                padding: 0;
+                font-family: ${isAr ? '"IBM Plex Sans Arabic", "Thmanyah Sans", sans-serif' : 'system-ui, sans-serif'};
+              }
+            `}
+          </style>
+
+          {/* Elegant Double Border with custom offset padding */}
+          <div className="absolute inset-4 border border-zinc-200 pointer-events-none rounded-[1.5rem]" style={{ borderWidth: '1px' }}>
+            <div className="absolute inset-1.5 border-2 border-zinc-900 rounded-[1.3rem]" style={{ borderWidth: '2px' }} />
+          </div>
+
+          <div className="relative z-10 flex-grow flex flex-col justify-between p-8 h-full">
+            {/* Header section with platform logo and emblem */}
+            <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-5">
+              <div className="space-y-1">
+                <h1 className="text-lg font-bold tracking-tight text-zinc-900 font-sans">
+                  {isAr ? 'منصة التقويم العام الموحد' : 'Unified General Calendar Platform'}
+                </h1>
+                <p className="text-[9px] text-zinc-500 font-medium">
+                  {isAr ? 'الهيئة المعيارية للمطابقة الفلكية وتحويل التواريخ وبحث الهلال' : 'Regulatory Standard for Solar-Lunar Alignment, Moon Sighting & Conversions'}
+                </p>
+              </div>
+              <div className="text-center font-secondary">
+                <div className="text-xl font-black text-zinc-900 tracking-wider">
+                  {isAr ? 'مستند تحويل' : 'CONVERSION CERT'}
+                </div>
+                <div className="text-[7px] tracking-[0.25em] text-zinc-400 font-bold uppercase mt-0.5">
+                  {isAr ? 'مطابقة معتمدة من قبل أم القرى' : 'Umm Al-Qura Compliant Record'}
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </div>
 
-        {/* Footer - Redesigned */}
-        <div className={cn(
-          "shrink-0 mt-6 text-[9px] font-bold uppercase flex items-center justify-between px-8 opacity-30",
-          !isAr && "tracking-[0.4em]",
-          printDesign === 'original' ? "text-zinc-500" : 
-          printDesign === 'modern' ? cn("text-zinc-400", !isAr && "tracking-[0.1em]") : "text-slate-400",
-          printDesign === 'general' && "text-black opacity-100"
-        )}>
-          <div className="flex items-center gap-4">
-            <span>{isAr ? 'التقويم العام' : 'General Calendar'}</span>
-            <div className="w-1 h-1 rounded-full bg-current" />
-            <span>{isAr ? 'بواسطة التقويم الدراسي والرواتب' : 'By Academic & Salary Calendar'}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>{format(new Date(), 'yyyy')}</span>
-            <div className="w-1 h-1 rounded-full bg-current" />
-            <span>{isAr ? 'جميع الحقوق محفوظة' : 'All Rights Reserved'}</span>
+            {/* Document Title Header */}
+            <div className="text-center mt-6">
+              <div className="inline-block px-8 py-2 border-y-2 border-zinc-900">
+                <h2 className="text-xl font-bold tracking-widest text-zinc-900 uppercase font-sans">
+                  {isAr ? 'شهادة مطابقة وتوثيق التاريخ الفلكي' : 'Official Date Alignment Statement'}
+                </h2>
+              </div>
+              <p className="text-[11px] text-zinc-500 font-light mt-3 px-10 leading-relaxed font-sans">
+                {isAr ? 'بناءً على المعايير الرياضية للمطابقة بين مسار الشمس ومنازل القمر البروج الفلكية وحسابات أم القرى الرسمية، تم توليد هذه الشهادة المعتمدة لتسجيل تطابق الإحداثيات التالية:' : 'This certificate validates the verified alignment between solar seasons, planetary zodiacs, moon cycles and official Umm al-Qura standard logs for the target date shown:'}
+              </p>
+            </div>
+
+            {/* Comparative Grid showing both Hijri & Gregorian calendars */}
+            <div className="grid grid-cols-2 gap-6 my-5">
+              {/* Hijri Box */}
+              <div className="p-5 bg-zinc-50/80 border border-zinc-900 rounded-2xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden">
+                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-zinc-900 text-[7px] font-bold text-white uppercase tracking-wider">
+                  {isAr ? 'تاريخ تقويم أم القرى' : 'HIJRI SYSTEM'}
+                </div>
+                <div className="text-4xl my-1">🕌</div>
+                <div className="space-y-1">
+                  <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                    {isAr ? 'التاريخ الهجري الدقيق' : 'Hijri Calendar Log'}
+                  </h3>
+                  <div className="text-xl font-bold text-zinc-900 font-secondary mt-1">
+                    {conversionDetails.formattedHijri}
+                  </div>
+                </div>
+                <div className="text-[9px] text-zinc-500 font-medium">
+                  {isAr ? `يوم: ${conversionDetails.hijriDay} من الشهر الهجري` : `Hijri day of month: ${conversionDetails.hijriDay}`}
+                </div>
+              </div>
+
+              {/* Gregorian Box */}
+              <div className="p-5 bg-zinc-50/80 border border-zinc-900 rounded-2xl flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden">
+                <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-indigo-600 text-[7px] font-bold text-white uppercase tracking-wider">
+                  {isAr ? 'التاريخ الميلادي الشمسي' : 'GREGORIAN SYSTEM'}
+                </div>
+                <div className="text-4xl my-1">📅</div>
+                <div className="space-y-1">
+                  <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                    {isAr ? 'التاريخ الميلادي المقابل' : 'Gregorian Calendar Log'}
+                  </h3>
+                  <div className="text-xl font-bold text-zinc-900 mt-1">
+                    {conversionDetails.formattedGregorian}
+                  </div>
+                </div>
+                <div className="text-[9px] text-zinc-500 font-medium">
+                  {isAr ? `يوم الأسبوع: ${conversionDetails.dayOfWeek}` : `Day of the Week: ${conversionDetails.dayOfWeek}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Scientific Astro Data Card */}
+            <div className="border border-zinc-900 rounded-2xl p-5 bg-white space-y-3">
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-800 border-b border-zinc-100 pb-2 flex items-center gap-2">
+                <span>🪐</span>
+                <span>{isAr ? 'الحسابات الفلكية وحالة جرم القمر الفلكي في هذا التاريخ:' : 'Astro-Physical & Moon Phase Parameters In Record:'}</span>
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Zodiac */}
+                <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-xl flex flex-col items-center justify-center text-center gap-1">
+                  <span className="text-2xl leading-none">{conversionDetails.zodiac?.icon}</span>
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{isAr ? 'البرج الشمسي' : 'Zodiac Sign'}</span>
+                  <span className="text-xs font-semibold text-zinc-850 truncate max-w-full">{conversionDetails.zodiac?.name}</span>
+                </div>
+
+                {/* Season */}
+                <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-xl flex flex-col items-center justify-center text-center gap-1">
+                  <span className="text-2xl leading-none">🍂</span>
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{isAr ? 'فصل السنة فلكياً' : 'Solar Season'}</span>
+                  <span className="text-xs font-semibold text-zinc-850 truncate max-w-full">{conversionDetails.season}</span>
+                </div>
+
+                {/* Moon Phase */}
+                <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-xl flex flex-col items-center justify-center text-center gap-1">
+                  <span className="text-2xl leading-none">{conversionDetails.moon?.icon}</span>
+                  <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{isAr ? 'طور القمر المعياري' : 'Lunar Phase'}</span>
+                  <span className="text-xs font-semibold text-zinc-850 truncate max-w-full">{conversionDetails.moon?.name}</span>
+                </div>
+              </div>
+
+              {/* Explanatory description from historical lunar observations */}
+              <div className="bg-zinc-50/50 p-3 rounded-xl border border-zinc-150 text-[10px] text-zinc-600 leading-relaxed text-center font-sans">
+                <span className="font-bold text-zinc-900 block mb-0.5">{isAr ? 'الوصف العلمي لطور وهلال القمر الحاصل اليوم:' : 'Physical Lunar Description & Sighting Viability:'}</span>
+                {conversionDetails.moon?.desc}
+              </div>
+            </div>
+
+            {/* Stamp & Seal Bottom signatures */}
+            <div className="grid grid-cols-3 gap-6 items-center border-t border-zinc-200 pt-5 mt-4">
+              <div className="text-right space-y-1">
+                <div className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{isAr ? 'الرقم المرجعي الموحد' : 'ALIGNMENT CODE'}</div>
+                <div className="text-[10px] font-mono font-medium text-zinc-800">GC-{conversionDetails.yearNumber}-{conversionDetails.monthNumber}-{conversionDetails.dayNumber}</div>
+              </div>
+
+              {/* Decent graphic mock seal for print rendering */}
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-full border-2 border-dashed border-indigo-600 flex items-center justify-center text-center text-indigo-600 uppercase font-black tracking-tighter text-[7.5px] leading-none transform -rotate-6 select-none">
+                  {isAr ? 'التقويم العام المعول' : 'VERIFIED STAMP'}
+                </div>
+                <div className="text-[7px] text-indigo-500 font-bold uppercase mt-1">
+                  {isAr ? 'اعتماد المطابقة الفورية' : 'SIMULATION SIGNATURE'}
+                </div>
+              </div>
+
+              <div className="text-left space-y-1">
+                <div className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest">{isAr ? 'تاريخ التوليد الرقمي' : 'GENERATED AT'}</div>
+                <div className="text-[10px] font-medium text-zinc-800">{format(new Date(), 'yyyy/MM/dd HH:mm')}</div>
+              </div>
+            </div>
+
+            {/* Bottom standard disclaimer */}
+            <div className="text-center text-[8px] text-zinc-400 tracking-wide font-sans mt-3 border-t border-zinc-100 pt-3">
+              {isAr ? 'تم سحب هذه الوثيقة آلياً عبر نظام التقويم العام ومحاكاة الشمس والقمر المعيارية وهي مطابقة لتقويم أم القرى الرسمي لجمهورية المملكة وسائر البلاد العربية.' : 'Calculated automatically by the General Calendar System applying exact astronomy guidelines and official solar-lunar alignment logs.'}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
